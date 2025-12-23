@@ -1,4 +1,4 @@
-from src.db.models import Documents
+from src.db.models import Documents, Users
 from pathlib import Path
 import shutil
 from typing import List
@@ -9,6 +9,8 @@ from .utils import generate_document_hash
 from .validators import DocumentValidator
 from src.db.enums import DocumentTypeChoices
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import selectinload
+from .schemas import UserDocumentsResponse, DocumentBase
 
 
 UPLOAD_FOLDER = Path("uploads/documents")
@@ -109,3 +111,85 @@ class TradeChainService:
                 if file_path.exists():
                     file_path.unlink(missing_ok=True)
             raise
+
+    @staticmethod
+    def get_all_documents_by_all_user(
+        db: Session,
+    ) -> List[UserDocumentsResponse]:
+        """Retrieve all documents owned by a specific user.
+
+        Args:
+            db (Session): The database session.
+
+        Returns:
+            List[Documents]: A list of Documents owned by the user.
+        """
+        statement = select(Users).options(selectinload(Users.documents))  # type: ignore
+        results = db.exec(statement).all()
+        return [
+            UserDocumentsResponse(
+                id=user.id,  # type: ignore
+                name=user.name,
+                email=user.email,
+                documents=[
+                    DocumentBase.model_validate(doc) for doc in user.documents or []
+                ],
+            )
+            for user in results
+        ]
+
+    @staticmethod
+    def get_document_by_user(
+        user: Users,
+        db: Session,
+    ) -> list[Documents]:
+        """Retrieve a document owned by a specific user.
+
+        Args:
+            user (Users): The user whose document is to be retrieved.
+            db (Session): The database session.
+
+        Returns:
+            Documents: The document owned by the user.
+        """
+        statement = select(Documents).where(Documents.owner_id == user.id)  # type: ignore
+        document = db.exec(statement).all()
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found.")
+        return list(document)
+
+    @staticmethod
+    def delete_document(
+        document_id: int,
+        user: Users,
+        db: Session,
+    ) -> None:
+        """Deletes a document owned by a specific user.
+
+        Args:
+            document_id (int): The ID of the document to be deleted.
+            user (Users): The user requesting the deletion.
+            db (Session): The database session.
+
+        Returns:
+            None
+        """
+        try:
+            statement = select(Documents).where(
+                Documents.id == document_id,
+                Documents.owner_id == user.id,  # type: ignore
+            )
+            document = db.exec(statement).first()
+            if not document:
+                raise HTTPException(status_code=404, detail="Document not found.")
+
+            file_path = Path(document.file_url)
+            if file_path.exists():
+                file_path.unlink(missing_ok=True)
+
+            db.delete(document)
+            db.commit()
+            return None
+        except SQLAlchemyError as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}")
