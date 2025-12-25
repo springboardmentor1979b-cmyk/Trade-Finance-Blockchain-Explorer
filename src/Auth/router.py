@@ -56,7 +56,7 @@ Note:
     - For production, implement rate limiting on /register and /login endpoints
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Response, status
 from fastapi.params import Cookie
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
@@ -71,6 +71,7 @@ from .schemas import (
     UserLoginModel,
     UserResponseModel,
 )
+from src.errors import LogoutError
 
 authRouter = APIRouter()
 service = authService()
@@ -146,12 +147,6 @@ def signup(
         - At least one special character (non-alphanumeric)
     """
     created_user = service.register_user(user, db)
-
-    if not created_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User already exists or could not be created",
-        )
     return UserResponseModel(**created_user.model_dump())
 
 
@@ -338,7 +333,4 @@ def logout(
     if val:
         response.delete_cookie(key="refresh_token")
         return {"detail": "Successfully logged out", "status_code": status.HTTP_200_OK}
-    raise HTTPException(
-        detail="some error occured during logout",
-        status_code=status.HTTP_400_BAD_REQUEST,
-    )
+    raise LogoutError()

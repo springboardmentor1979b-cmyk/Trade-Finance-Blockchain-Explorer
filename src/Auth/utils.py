@@ -239,14 +239,8 @@ class JWTHandler:
             )
             return decoded_token
 
-        except ExpiredSignatureError:
-            print("token expired")
-            return None
-
-        except JWTError as e:
-            print("JWT decode error:", e)
-            return None
+        except ExpiredSignatureError or JWTError:
+            raise
 
         except Exception as e:
-            print("Unexpected error decoding JWT:", e)
-            return None
+            raise e

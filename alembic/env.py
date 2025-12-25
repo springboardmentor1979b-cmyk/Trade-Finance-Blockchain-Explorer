@@ -12,10 +12,7 @@ from src.db.models import *  # noqa: F403
 # access to the values within the .ini file in use.
 config = context.config
 
-if settings.USE_POSTGRES:
-    config.set_main_option("sqlalchemy.url", settings.POSTGRES_DATABASE_URL)  # type: ignore
-else:
-    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)  # type: ignore
+config.set_main_option("sqlalchemy.url", settings.POSTGRES_DATABASE_URL)  # type: ignore
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

@@ -41,18 +41,10 @@ class Documents(SQLModel, table=True):
     doc_number: str = Field(index=True)
     file_url: str
     hash: str
-    issued_at: datetime = Field(
-        sa_column=Column(
-            DateTime(timezone=True),
-            server_default=func.now(),
-            onupdate=func.now()  # This is the magic line
-        )
-    )
+    issued_at: datetime
     created_at: datetime = Field(
         sa_column=Column(
-            DateTime(timezone=True), 
-            server_default=func.now(), 
-            nullable=False
+            DateTime(timezone=True), server_default=func.now(), nullable=False
         )
     )
     owner_id: int = Field(foreign_key="users.id")
@@ -87,16 +79,12 @@ class TradeTransactions(SQLModel, table=True):
     status: TransactionStatusChoices = Field(default=TransactionStatusChoices.PENDING)
     created_at: datetime = Field(
         sa_column=Column(
-            DateTime(timezone=True), 
-            server_default=func.now(), 
-            nullable=False
+            DateTime(timezone=True), server_default=func.now(), nullable=False
         )
     )
     updated_at: datetime = Field(
         sa_column=Column(
-            DateTime(timezone=True),
-            server_default=func.now(),
-            onupdate=func.now()  # This is the magic line
+            DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
         )
     )
     buyer_id: int = Field(foreign_key="users.id")
@@ -135,9 +123,7 @@ class LedgerEntries(SQLModel, table=True):
     metadatav: dict[str, Any] = Field(sa_column=Column(JSONB))
     created_at: datetime = Field(
         sa_column=Column(
-            DateTime(timezone=True), 
-            server_default=func.now(), 
-            nullable=False
+            DateTime(timezone=True), server_default=func.now(), nullable=False
         )
     )
     document_id: int = Field(foreign_key="documents.id")
@@ -168,9 +154,7 @@ class RiskScores(SQLModel, table=True):
     rationale: str
     last_updated: datetime = Field(
         sa_column=Column(
-            DateTime(timezone=True),
-            server_default=func.now(),
-            onupdate=func.now()  # This is the magic line
+            DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
         )
     )
     user_id: int = Field(foreign_key="users.id")
@@ -202,9 +186,7 @@ class AuditLogs(SQLModel, table=True):
     target_id: int
     timestamp: datetime = Field(
         sa_column=Column(
-            DateTime(timezone=True),
-            server_default=func.now(),
-            onupdate=func.now()  # This is the magic line
+            DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
         )
     )
 

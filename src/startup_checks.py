@@ -120,7 +120,7 @@ def register_startup_checks(app: FastAPI, db_url: str, redis_url: str) -> None:
     def verify_dependencies():
         print("\nRunning startup health checks...\n")
 
-        print("Using Postgres (production mode)")
+        print("Using Postgres database")
 
         check_sqlmodel_database(db_url)
         check_redis_connection(redis_url)

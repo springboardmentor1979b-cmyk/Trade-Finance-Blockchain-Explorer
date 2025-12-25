@@ -16,7 +16,6 @@ class Settings(BaseSettings):
     Attributes:
         DATABASE_URL (str): The default database connection URL (e.g., sqlite:///database.db).
         POSTGRES_DATABASE_URL (str): The PostgreSQL database connection URL (e.g., postgresql://user:pass@host/db).
-        USE_POSTGRES (bool): Flag to determine whether to use PostgreSQL or the default database.
         JWT_SECRET_KEY (str): The secret key used to sign JWT tokens. Must be kept secure.
         JWT_ALGORITHM (str): The algorithm used to sign JWT tokens (e.g., "HS256").
         REDIS_URL (str): Full Redis connection URL (e.g., redis://host:port/db).

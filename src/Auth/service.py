@@ -37,7 +37,7 @@ Note:
 
 import time
 
-from fastapi import HTTPException, status, Response
+from fastapi import Response
 from sqlmodel import Session, select
 
 from src.db.models import Users
@@ -171,44 +171,42 @@ class authService:
             - Password validation errors returned as structured response with detailed messages
             - Password hashed with Argon2 before storage in database
         """
-        data = user.model_dump()
+        try:
+            data = user.model_dump()
 
-        email = data["email"]
-        name = data["name"]
-        password = data["password"]
-        role = data["role"]
-        org_name = data["org_name"]
+            email = data["email"]
+            name = data["name"]
+            password = data["password"]
+            role = data["role"]
+            org_name = data["org_name"]
 
-        if not validate_email(email):
-            raise InvalidEmailFormat()
+            if not validate_email(email):
+                raise InvalidEmailFormat()
 
-        if self.get_user_by_email(email, db):
-            raise UserAlreadyExists()
+            if self.get_user_by_email(email, db):
+                raise UserAlreadyExists()
 
-        if not password:
-            raise PasswordMissing()
+            if not password:
+                raise PasswordMissing()
 
-        errors = validate_password(password)
-        if errors:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "code": "invalid_password",
-                    "messages": errors,
-                },
-            )
+            errors = validate_password(password)
+            if errors:
+                raise InvalidCredentials()
 
-        hashed = hash_password(password)
+            hashed = hash_password(password)
 
-        new_user = Users(
-            name=name, email=email, password=hashed, role=role, org_name=org_name
-        )  # type: ignore
+            new_user = Users(
+                name=name, email=email, password=hashed, role=role, org_name=org_name
+            )  # type: ignore
 
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
+            db.add(new_user)
+            db.commit()
+            db.refresh(new_user)
 
-        return new_user
+            return new_user
+        except Exception:
+            db.rollback()
+            raise
 
     def authenticate_user(self, login: UserLoginModel, response: Response, db: Session):
         """Authenticate a user and generate JWT token pair.
@@ -307,9 +305,7 @@ class authService:
         try:
             user_id = int(sub)
         except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject"
-            ) from exc
+            raise InvalidToken() from exc
 
         user = self.get_user_by_id(user_id, db)
         if not user:

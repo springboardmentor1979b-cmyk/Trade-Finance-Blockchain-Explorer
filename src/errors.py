@@ -139,6 +139,106 @@ class PasswordMissing(TradeExplorerException):
     pass
 
 
+class LogoutError(TradeExplorerException):
+    """Exception raised when an error occurs during logout.
+
+    Occurs when there is a failure in the logout process, such as issues
+    revoking tokens or updating session state.
+    """
+
+    pass
+
+
+class DupliacateDocument(TradeExplorerException):
+    """Exception raised when a duplicate document is detected.
+
+    Occurs when attempting to add a document that already exists in the system,
+    based on its cryptographic hash.
+    """
+
+    pass
+
+
+class DocumentNotFound(TradeExplorerException):
+    """Exception raised when a document cannot be found in the database.
+
+    Occurs when attempting to retrieve or perform operations on a document
+    that does not exist in the system.
+    """
+
+    pass
+
+
+class UnauthorizedDocumentAccess(TradeExplorerException):
+    """Exception raised when a user attempts to access a document they do not own.
+
+    Occurs when a user tries to retrieve or manipulate a document that belongs
+    to another user.
+    """
+
+    pass
+
+
+class DocumentUploadError(TradeExplorerException):
+    """Exception raised when an error occurs during document upload.
+
+    Occurs when there is a failure in the document upload process, such as issues
+    saving the file or generating its hash.
+    """
+
+    pass
+
+
+class DocumentProcessingError(TradeExplorerException):
+    """Exception raised when an error occurs during document processing.
+
+    Occurs when there is a failure in processing the document, such as issues
+    reading the file or extracting necessary metadata.
+    """
+
+    pass
+
+
+class ExternalServiceError(TradeExplorerException):
+    """Exception raised when an external service call fails.
+
+    Occurs when there is a failure in communicating with an external service,
+    such as a third-party API or microservice.
+    """
+
+    pass
+
+
+class DocumentNotUploaded(TradeExplorerException):
+    """Exception raised when a document is not uploaded successfully.
+
+    Occurs when there is a failure in the document upload process, such as issues
+    saving the file or generating its hash.
+    """
+
+    pass
+
+
+class InvalidDocumentFormat(TradeExplorerException):
+    """Exception raised when a document has an invalid format.
+
+    Occurs during document upload or processing when the provided document
+    does not conform to expected formatting rules.
+    """
+
+    pass
+
+
+class DocumentDeleteError(TradeExplorerException):
+    """Exception raised when an error occurs during document deletion.
+
+    Occurs when there is a failure in the document deletion process, such as issues
+    removing the file or updating database records.
+    """
+
+    pass
+
+
 def create_exception_handler(
     status_code: int, initial_detail: Any
 ) -> Callable[[Request, Exception], JSONResponse]:
@@ -312,8 +412,102 @@ def register_error_handlers(app: FastAPI):
         ),
     )
 
+    app.add_exception_handler(
+        LogoutError,
+        create_exception_handler(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            initial_detail={
+                "message": "An error occurred during logout",
+                "error_code": "logout_error",
+                "resolution": "Please try logging out again later",
+            },
+        ),
+    )
+
+    app.add_exception_handler(
+        DocumentNotFound,
+        create_exception_handler(
+            status_code=status.HTTP_404_NOT_FOUND,
+            initial_detail={
+                "message": "Document not found",
+                "error_code": "document_not_found",
+            },
+        ),
+    )
+
+    app.add_exception_handler(
+        UnauthorizedDocumentAccess,
+        create_exception_handler(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            initial_detail={
+                "message": "You do not have access to this document",
+                "error_code": "unauthorized_document_access",
+            },
+        ),
+    )
+
+    app.add_exception_handler(
+        DupliacateDocument,
+        create_exception_handler(
+            status_code=status.HTTP_409_CONFLICT,
+            initial_detail={
+                "message": "Duplicate document detected",
+                "error_code": "duplicate_document",
+                "resolution": "Please check the document and try again",
+            },
+        ),
+    )
+
+    app.add_exception_handler(
+        DocumentNotUploaded,
+        create_exception_handler(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            initial_detail={
+                "message": "No document was uploaded",
+                "error_code": "document_upload_error",
+                "resolution": "Please try uploading the document again",
+            },
+        ),
+    )
+
+    app.add_exception_handler(
+        InvalidDocumentFormat,
+        create_exception_handler(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            initial_detail={
+                "message": "The document format is invalid",
+                "error_code": "invalid_document_format",
+                "resolution": "Please upload a document in the correct format",
+            },
+        ),
+    )
+
+    app.add_exception_handler(
+        DocumentUploadError,
+        create_exception_handler(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            initial_detail={
+                "message": "An error occurred during document upload",
+                "error_code": "document_upload_error",
+                "resolution": "Please try uploading the document again later",
+            },
+        ),
+    )
+
+    app.add_exception_handler(
+        DocumentDeleteError,
+        create_exception_handler(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            initial_detail={
+                "message": "An error occurred during document deletion",
+                "error_code": "document_delete_error",
+                "resolution": "Please try deleting the document again later",
+            },
+        ),
+    )
+
     @app.exception_handler(500)
-    async def internal_server_error(request, exc):
+    def internal_server_error(request, exc):
         return JSONResponse(
             content={
                 "message": "Oops! Something went wrong",
