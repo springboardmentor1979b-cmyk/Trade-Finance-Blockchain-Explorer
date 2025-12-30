@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
     FileText,
     CheckCircle,
@@ -13,62 +13,16 @@ import UploadModal from "./components/UploadModal";
 import ViewModal from "./components/ViewModal";
 import EditModal from "./components/EditModal";
 import { useDocuments, useUploadForm, useModals } from "./hooks/useDocuments";
-
-// Sample documents data
-const sampleDocuments = [
-    {
-        id: 1,
-        name: "Letter of Credit - ABC Corp",
-        type: "loc",
-        status: "verified",
-        uploadedBy: "John Doe",
-        uploadedAt: "2025-12-09",
-        txHash: "0x1a2b3c...4d5e6f",
-        size: "2.4 MB",
-    },
-    {
-        id: 2,
-        name: "Invoice #INV-2025-001",
-        type: "invoice",
-        status: "pending",
-        uploadedBy: "Jane Smith",
-        uploadedAt: "2025-12-08",
-        txHash: "0x7g8h9i...0j1k2l",
-        size: "1.2 MB",
-    },
-    {
-        id: 3,
-        name: "Bill of Lading - Shipment #45892",
-        type: "bill_of_lading",
-        status: "in_progress",
-        uploadedBy: "Mike Wilson",
-        uploadedAt: "2025-12-07",
-        txHash: "0x3m4n5o...6p7q8r",
-        size: "3.8 MB",
-    },
-    {
-        id: 4,
-        name: "Purchase Order - PO-2025-089",
-        type: "po",
-        status: "completed",
-        uploadedBy: "Sarah Johnson",
-        uploadedAt: "2025-12-06",
-        txHash: "0x9s0t1u...2v3w4x",
-        size: "890 KB",
-    },
-    {
-        id: 5,
-        name: "Certificate of Origin - China Export",
-        type: "coo",
-        status: "disputed",
-        uploadedBy: "Tom Brown",
-        uploadedAt: "2025-12-05",
-        txHash: "0x5y6z7a...8b9c0d",
-        size: "1.5 MB",
-    },
-];
+import { useAuth } from "./context/AuthContext";
 
 function Home() {
+    // Get authentication context for role-based rendering
+    const { user, role } = useAuth();
+    const userRole = role || "corporate"; // Default to corporate if role not defined
+    const isAdmin = userRole === "admin";
+    const currentUserId = user?.uid || user?.id || ""; // Get current user ID for filtering
+
+    const sampleDocuments = [];
     // Use custom hooks for state management
     const {
         documents,
@@ -82,6 +36,20 @@ function Home() {
         updateDocument,
         deleteDocument,
     } = useDocuments(sampleDocuments);
+
+    // Filter documents based on user role
+    // Admin: sees all documents
+    // Corporate/Bank: sees only their own documents
+    const visibleDocuments = useMemo(() => {
+        if (isAdmin) {
+            return documents;
+        }
+        // For non-admin users, filter documents by owner
+        return documents.filter(
+            (doc) =>
+                doc.ownerId === currentUserId || doc.uploadedBy === user?.name
+        );
+    }, [documents, isAdmin, currentUserId, user?.name]);
 
     const {
         uploadFile,
@@ -154,6 +122,25 @@ function Home() {
         }
     };
 
+    // Handle document download
+    const handleDownload = (doc) => {
+        // In a real implementation, this would download the actual file
+        // For now, we'll simulate the download
+        console.log("Downloading document:", doc.name);
+
+        // Create a mock download (in production, this would be an API call)
+        const element = document.createElement("a");
+        element.setAttribute(
+            "href",
+            `data:text/plain;charset=utf-8,Document: ${doc.name}%0AType: ${doc.type}%0ATX Hash: ${doc.txHash}`
+        );
+        element.setAttribute("download", `${doc.name}.txt`);
+        element.style.display = "none";
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+    };
+
     const handleUploadSubmit = (e) => {
         e.preventDefault();
         if (!uploadFile) return;
@@ -163,7 +150,8 @@ function Home() {
             name: uploadForm.name || uploadFile.name,
             type: uploadForm.type,
             status: "pending",
-            uploadedBy: "Current User",
+            uploadedBy: user?.name || "Current User",
+            ownerId: currentUserId,
             uploadedAt: new Date().toISOString().split("T")[0],
             txHash: "0x" + Math.random().toString(16).slice(2, 14) + "...",
             size: (uploadFile.size / (1024 * 1024)).toFixed(2) + " MB",
@@ -184,29 +172,32 @@ function Home() {
         setSelectedDocument(null);
     };
 
-    // Stats data
+    // Stats data - show stats for visible documents based on role
     const stats = [
         {
             label: "Total Documents",
-            value: documents.length,
+            value: visibleDocuments.length,
             icon: FileText,
             color: "bg-blue-500",
         },
         {
             label: "Verified",
-            value: documents.filter((d) => d.status === "verified").length,
+            value: visibleDocuments.filter((d) => d.status === "verified")
+                .length,
             icon: CheckCircle,
             color: "bg-green-500",
         },
         {
             label: "Pending",
-            value: documents.filter((d) => d.status === "pending").length,
+            value: visibleDocuments.filter((d) => d.status === "pending")
+                .length,
             icon: Clock,
             color: "bg-yellow-500",
         },
         {
             label: "In Progress",
-            value: documents.filter((d) => d.status === "in_progress").length,
+            value: visibleDocuments.filter((d) => d.status === "in_progress")
+                .length,
             icon: TrendingUp,
             color: "bg-purple-500",
         },
@@ -217,13 +208,53 @@ function Home() {
             <div className="max-w-7xl mx-auto px-4 py-8">
                 {/* Header */}
                 <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-white mb-2">
-                        Trade Finance Blockchain Explorer
-                    </h1>
-                    <p className="text-slate-400">
-                        Manage, verify, and track your trade finance documents
-                        on the blockchain
-                    </p>
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div>
+                            <h1 className="text-3xl font-bold text-white mb-2">
+                                Trade Finance Blockchain Explorer
+                            </h1>
+                            <p className="text-slate-400">
+                                Manage, verify, and track your trade finance
+                                documents on the blockchain
+                            </p>
+                        </div>
+                        {/* Role Badge */}
+                        <div className="flex items-center gap-2">
+                            <span className="text-slate-400 text-sm">
+                                Logged in as:
+                            </span>
+                            <span
+                                className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide ${
+                                    isAdmin
+                                        ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                                        : userRole === "bank"
+                                          ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                                          : "bg-green-500/20 text-green-400 border border-green-500/30"
+                                }`}
+                            >
+                                {userRole}
+                            </span>
+                        </div>
+                    </div>
+                    {/* Role-specific info message */}
+                    {isAdmin ? (
+                        <div className="mt-4 bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                            <p className="text-amber-300 text-sm">
+                                <span className="font-medium">Admin View:</span>{" "}
+                                You can view all documents, edit them, and
+                                delete them. Document uploads and downloads are
+                                handled by banks and corporates.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="mt-4 bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                            <p className="text-blue-300 text-sm">
+                                <span className="font-medium">Note:</span> As a{" "}
+                                {userRole}, you can upload, view, and download
+                                your own documents.
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Stats Cards */}
@@ -248,17 +279,21 @@ function Home() {
                     filterStatus={filterStatus}
                     onFilterStatusChange={setFilterStatus}
                     onUploadClick={() => setShowUploadModal(true)}
+                    userRole={userRole}
                 />
 
                 {/* Documents Table */}
                 <DocumentTable
-                    documents={documents}
+                    documents={visibleDocuments}
                     searchQuery={searchQuery}
                     filterType={filterType}
                     filterStatus={filterStatus}
                     onView={handleView}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    onDownload={handleDownload}
+                    userRole={userRole}
+                    currentUsername={user?.name || ""}
                 />
 
                 {/* Upload Modal */}
@@ -286,6 +321,8 @@ function Home() {
                     document={selectedDocument}
                     onClose={() => setShowViewModal(false)}
                     onEdit={handleEdit}
+                    onDownload={handleDownload}
+                    userRole={userRole}
                 />
 
                 {/* Edit Modal */}

@@ -89,13 +89,13 @@ function Signup() {
                 email,
                 password,
             });
+            toast.success("Signup successful! Please log in.");
             navigate("/login");
         } catch (err) {
             setError(
                 err?.response?.data?.message ||
                     "Signup failed. Please try again."
             );
-            toast.error(err?.response?.data?.detail || "Signup failed");
         } finally {
             cleanUpForm();
         }

@@ -399,7 +399,7 @@ function Dashboard() {
             {/* CTA Section */}
             <section className="py-12 px-4">
                 <div className="max-w-4xl mx-auto">
-                    <div className="bg-linear-to-r from-orange-500/20 to-purple-500/20 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-white/10 text-center">
+                    <div className="bg-linear-to-r from-orange-500/15 via-orange-500/10 to-orange-500/5 backdrop-blur-lg rounded-2xl p-8 md:p-12 border border-white/10 text-center">
                         <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
                             Ready to Get Started?
                         </h2>

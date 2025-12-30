@@ -27,7 +27,7 @@ from typing import List
 from fastapi import UploadFile
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
-from sqlmodel import Session, and_, select
+from sqlmodel import Session, select
 from datetime import datetime
 
 from src.db.enums import DocumentTypeChoices
@@ -270,7 +270,6 @@ class TradeChainService:
         document_id: int,
         file: UploadFile,
         doc_type: DocumentTypeChoices,
-        user: Users,
         db: Session,
     ) -> Documents:
         """Update an existing document's file owned by a specific user.
@@ -297,12 +296,7 @@ class TradeChainService:
         if not file_validator.validate_file_extension(file):
             raise InvalidDocumentFormat()
 
-        statement = select(Documents).where(
-            and_(
-                Documents.id == document_id,
-                Documents.owner_id == user.id,  # type: ignore
-            )
-        )
+        statement = select(Documents).where(Documents.id == document_id)
         document = db.exec(statement).first()
         if not document:
             raise DocumentNotFound()
@@ -337,7 +331,6 @@ class TradeChainService:
     @staticmethod
     def delete_document(
         document_id: int,
-        user: Users,
         db: Session,
     ) -> None:
         """Delete a document owned by a specific user.
@@ -363,10 +356,7 @@ class TradeChainService:
             but the file will already be deleted from disk.
         """
         try:
-            statement = select(Documents).where(
-                Documents.id == document_id,
-                Documents.owner_id == user.id,  # type: ignore
-            )
+            statement = select(Documents).where(Documents.id == document_id)
             document = db.exec(statement).first()
             if not document:
                 raise DocumentNotFound()

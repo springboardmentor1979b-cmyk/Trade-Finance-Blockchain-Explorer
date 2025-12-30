@@ -4,6 +4,9 @@ import { Plus, Search, ChevronDown } from "lucide-react";
 /**
  * ActionBar Component
  * Handles document search, filtering by type and status, and upload button
+ * Supports role-based rendering:
+ * - Admin: Can see upload button
+ * - Corporate/Bank: Cannot upload new documents
  *
  * @component
  * @param {Object} props - Component props
@@ -14,6 +17,7 @@ import { Plus, Search, ChevronDown } from "lucide-react";
  * @param {string} props.filterStatus - Currently selected status filter
  * @param {Function} props.onFilterStatusChange - Callback when status filter changes
  * @param {Function} props.onUploadClick - Callback when Upload button is clicked
+ * @param {string} props.userRole - Current user's role (admin, corporate, bank)
  *
  * @example
  * <ActionBar
@@ -24,6 +28,7 @@ import { Plus, Search, ChevronDown } from "lucide-react";
  *   filterStatus={status}
  *   onFilterStatusChange={setStatus}
  *   onUploadClick={() => setShowModal(true)}
+ *   userRole="admin"
  * />
  */
 function ActionBar({
@@ -34,7 +39,10 @@ function ActionBar({
     filterStatus,
     onFilterStatusChange,
     onUploadClick,
+    userRole = "corporate",
 }) {
+    // Banks and corporates can upload documents, not admin
+    const canUpload = userRole === "bank" || userRole === "corporate";
     return (
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 mb-6 border border-white/10">
             <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
@@ -124,14 +132,16 @@ function ActionBar({
                         <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
                     </div>
 
-                    {/* Upload Button */}
-                    <button
-                        onClick={onUploadClick}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors"
-                    >
-                        <Plus className="w-5 h-5" />
-                        Upload Document
-                    </button>
+                    {/* Upload Button - Admin Only */}
+                    {canUpload && (
+                        <button
+                            onClick={onUploadClick}
+                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors"
+                        >
+                            <Plus className="w-5 h-5" />
+                            Upload Document
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

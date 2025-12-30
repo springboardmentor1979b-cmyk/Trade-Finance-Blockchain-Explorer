@@ -21,16 +21,14 @@ function Login() {
                 email: email,
                 password: password,
             });
-            auth.login(response.data);
+            toast.success("Login successful!");
+            await auth.login(response.data, response.data.user);
         } catch (err) {
             setError(
                 err.response?.data?.message || "Login failed. Please try again."
             );
-            toast.error("Login error:", err);
         } finally {
-            setEmail("");
             setPassword("");
-            setError("");
         }
     };
 

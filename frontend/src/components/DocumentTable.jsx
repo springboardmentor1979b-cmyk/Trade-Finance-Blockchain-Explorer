@@ -48,6 +48,9 @@ const statusStyles = {
 /**
  * DocumentTable Component
  * Displays a table of documents with filtering and action buttons
+ * Supports role-based action rendering:
+ * - Admin: Can view, edit, delete all documents
+ * - Corporate/Bank: Can only view and download their own documents
  *
  * @component
  * @param {Object} props - Component props
@@ -58,6 +61,9 @@ const statusStyles = {
  * @param {Function} props.onView - Callback when view button is clicked
  * @param {Function} props.onEdit - Callback when edit button is clicked
  * @param {Function} props.onDelete - Callback when delete button is clicked
+ * @param {Function} props.onDownload - Callback when download button is clicked
+ * @param {string} props.userRole - Current user's role (admin, corporate, bank)
+ * @param {string} props.currentUsername - Current user's username for filtering
  *
  * @example
  * <DocumentTable
@@ -68,6 +74,9 @@ const statusStyles = {
  *   onView={handleView}
  *   onEdit={handleEdit}
  *   onDelete={handleDelete}
+ *   onDownload={handleDownload}
+ *   userRole="admin"
+ *   currentUsername="john"
  * />
  */
 function DocumentTable({
@@ -78,7 +87,14 @@ function DocumentTable({
     onView,
     onEdit,
     onDelete,
+    onDownload,
+    userRole = "corporate",
+    currentUsername = "",
 }) {
+    const isAdmin = userRole === "admin";
+    const canEdit = isAdmin;
+    const canDelete = isAdmin;
+    const canDownload = !isAdmin; // Banks and corporates can download
     // Filter documents
     const filteredDocuments = documents.filter((doc) => {
         const matchesSearch = doc.name
@@ -185,26 +201,38 @@ function DocumentTable({
                                             >
                                                 <Eye className="w-4 h-4 text-slate-400 group-hover:text-blue-400" />
                                             </button>
-                                            <button
-                                                onClick={() => onEdit(doc)}
-                                                className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
-                                                title="Edit"
-                                            >
-                                                <Edit3 className="w-4 h-4 text-slate-400 group-hover:text-yellow-400" />
-                                            </button>
-                                            <button
-                                                className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
-                                                title="Download"
-                                            >
-                                                <Download className="w-4 h-4 text-slate-400 group-hover:text-green-400" />
-                                            </button>
-                                            <button
-                                                onClick={() => onDelete(doc.id)}
-                                                className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
-                                                title="Delete"
-                                            >
-                                                <Trash2 className="w-4 h-4 text-slate-400 group-hover:text-red-400" />
-                                            </button>
+                                            {canEdit && (
+                                                <button
+                                                    onClick={() => onEdit(doc)}
+                                                    className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
+                                                    title="Edit"
+                                                >
+                                                    <Edit3 className="w-4 h-4 text-slate-400 group-hover:text-yellow-400" />
+                                                </button>
+                                            )}
+                                            {canDownload && (
+                                                <button
+                                                    onClick={() =>
+                                                        onDownload &&
+                                                        onDownload(doc)
+                                                    }
+                                                    className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
+                                                    title="Download"
+                                                >
+                                                    <Download className="w-4 h-4 text-slate-400 group-hover:text-green-400" />
+                                                </button>
+                                            )}
+                                            {canDelete && (
+                                                <button
+                                                    onClick={() =>
+                                                        onDelete(doc.id)
+                                                    }
+                                                    className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 className="w-4 h-4 text-slate-400 group-hover:text-red-400" />
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

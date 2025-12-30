@@ -207,7 +207,7 @@ class JWTHandler:
         return token
 
     @staticmethod
-    def decode_jwt_token(token: str) -> dict | None:
+    def decode_jwt_token(token: str, options: dict | None = None) -> dict | None:
         """Decode and validate a JWT token.
 
         Decodes a JWT token, validates its signature, and checks expiration.
@@ -235,7 +235,10 @@ class JWTHandler:
 
         try:
             decoded_token = jwt.decode(
-                token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM]
+                token,
+                JWT_SECRET_KEY,
+                algorithms=[JWT_ALGORITHM],
+                options=options or None,
             )
             return decoded_token
 

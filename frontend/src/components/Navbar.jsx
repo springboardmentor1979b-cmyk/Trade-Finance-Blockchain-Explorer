@@ -9,7 +9,6 @@ function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
 
     const handleLogout = async () => {
-        const refreshToken = localStorage.getItem("refresh_token");
         try {
             await api.post("/api/auth/logout");
             auth.logout();
@@ -96,16 +95,6 @@ function Navbar() {
                 <h1 className="text-white text-xl font-bold">TradeChain</h1>
             </NavLink>
             <ul className="hidden md:flex flex-row gap-6">
-                <li>
-                    <NavLink
-                        to="/"
-                        className={({ isActive }) =>
-                            `text-semibold italic ${isActive ? "text-orange-400" : "text-white"}`
-                        }
-                    >
-                        Home
-                    </NavLink>
-                </li>
                 {auth.isAuthenticated ? (
                     <>
                         <li>
@@ -131,6 +120,16 @@ function Navbar() {
                     </>
                 ) : (
                     <>
+                        <li>
+                            <NavLink
+                                to="/"
+                                className={({ isActive }) =>
+                                    `text-semibold italic ${isActive ? "text-orange-400" : "text-white"}`
+                                }
+                            >
+                                Home
+                            </NavLink>
+                        </li>
                         <li>
                             <NavLink
                                 to="/login"

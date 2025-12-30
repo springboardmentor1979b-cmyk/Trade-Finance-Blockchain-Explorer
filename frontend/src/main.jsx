@@ -8,6 +8,7 @@ import "./index.css";
 import Login from "./components/Login.jsx";
 import Signup from "./components/Signup.jsx";
 import Dashboard from "./components/Dashboard.jsx";
+import Unauthorised from "./components/Unauthorised.jsx";
 import Home from "./Home.jsx";
 
 createRoot(document.getElementById("root")).render(
@@ -19,10 +20,23 @@ createRoot(document.getElementById("root")).render(
                         <Route index element={<Dashboard />} />
                         <Route path="login" element={<Login />} />
                         <Route path="signup" element={<Signup />} />
-                        <Route element={<ProtectedRoute />}>
+                        <Route
+                            element={
+                                <ProtectedRoute
+                                    allowedRoles={[
+                                        "admin",
+                                        "corporate",
+                                        "auditor",
+                                        "bank",
+                                    ]}
+                                />
+                            }
+                        >
                             <Route path="dashboard" element={<Home />} />
                         </Route>
                     </Route>
+                    <Route path="/unauthorized" element={<Unauthorised />} />
+                    <Route path="*" element={<div>404 Not Found</div>} />
                 </Routes>
             </AuthProvider>
         </BrowserRouter>

@@ -250,6 +250,7 @@ class authService:
         refresh = JWTHandler.create_refresh_token(refresh_payload)
 
         return {
+            "user": user,
             "access_token": access,
             "refresh_token": refresh,
             "token_type": "bearer",
@@ -324,54 +325,51 @@ class authService:
             "token_type": "bearer",
         }
 
-    def revoke_token(self, refresh_token: str, token: str) -> bool:
-        """Revoke both access and refresh tokens by adding them to Redis blocklist.
-
-        Extracts the JTI (JWT ID) claim from both tokens, calculates remaining TTL,
-        and adds them to Redis blocklist to prevent future use. Implements stateful
-        token revocation despite JWT being inherently stateless.
-
-        Args:
-            logout_data (RefreshRequest): Request object containing refresh_token.
-            token (str): The access token string (from Authorization header).
-
-        Returns:
-            bool: True if revocation completed successfully.
-
-        Token Revocation Steps:
-            1. Decode access token and extract JTI claim
-            2. Calculate TTL (expiration - current time)
-            3. Add access JTI to Redis blocklist with TTL
-            4. Decode refresh token and extract JTI claim
-            5. Calculate TTL (expiration - current time)
-            6. Add refresh JTI to Redis blocklist with TTL
-
-        Note:
-            - Both tokens must be decodable (even if expired)
-            - TTL calculated as: token_exp_time - current_unix_time
-            - Only positive TTL tokens added to blocklist
-            - Redis auto-deletes entries after TTL expiration
-            - JTI claims must be present in both tokens
-            - Revocation immediate and globally distributed
-            - Prevents reuse even before natural expiration
+    def revoke_token(
+        self,
+        refresh_token: str | None = None,
+        token: str | None = None,
+    ) -> bool:
         """
-        access_payload = JWTHandler.decode_jwt_token(token)
-        access_jti = access_payload.get("jti")  # type: ignore
-        access_exp = access_payload.get("exp")  # type: ignore
+        Safely revoke access and refresh tokens by blocklisting their JTIs.
+
+        - Idempotent (never fails)
+        - Handles missing / expired tokens
+        - Logout-safe
+        """
 
         current_time = int(time.time())
 
-        if access_jti and access_exp:
-            ttl = access_exp - current_time
-            if ttl > 0:
-                add_jti_blocklist(access_jti, ttl)
+        # ---------- ACCESS TOKEN ----------
+        if token:
+            try:
+                access_payload = JWTHandler.decode_jwt_token(
+                    token, options={"verify_exp": False}
+                )
+                access_jti = access_payload.get("jti")  # type: ignore
+                access_exp = access_payload.get("exp")  # type: ignore
 
-        refresh_payload = JWTHandler.decode_jwt_token(refresh_token)
-        refresh_jti = refresh_payload.get("jti")  # type: ignore
-        refresh_exp = refresh_payload.get("exp")  # type: ignore
+                if access_jti and access_exp:
+                    ttl = access_exp - current_time
+                    if ttl > 0:
+                        add_jti_blocklist(access_jti, ttl)
+            except Exception:
+                pass  # logout must never fail
 
-        if refresh_jti and refresh_exp:
-            ttl = refresh_exp - current_time
-            if ttl > 0:
-                add_jti_blocklist(refresh_jti, ttl)
+        # ---------- REFRESH TOKEN ----------
+        if refresh_token:
+            try:
+                refresh_payload = JWTHandler.decode_jwt_token(
+                    refresh_token, options={"verify_exp": False}
+                )
+                refresh_jti = refresh_payload.get("jti")  # type: ignore
+                refresh_exp = refresh_payload.get("exp")  # type: ignore
+
+                if refresh_jti and refresh_exp:
+                    ttl = refresh_exp - current_time
+                    if ttl > 0:
+                        add_jti_blocklist(refresh_jti, ttl)
+            except Exception:
+                pass  # logout must never fail
+
         return True

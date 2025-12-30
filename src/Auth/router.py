@@ -71,7 +71,7 @@ from .schemas import (
     UserLoginModel,
     UserResponseModel,
 )
-from src.errors import LogoutError
+# from src.errors import LogoutError
 
 authRouter = APIRouter()
 service = authService()
@@ -153,7 +153,7 @@ def signup(
 @authRouter.post("/login", status_code=status.HTTP_200_OK)
 def login(
     user_data: UserLoginModel, response: Response, db: Session = Depends(get_session)
-) -> TokenResponseModel:
+):
     """Authenticate user and generate JWT token pair.
 
     Validates user credentials (email and password) against the database.
@@ -195,7 +195,18 @@ def login(
         max_age=7 * 24 * 60 * 60,  # 7 days
     )
 
-    return TokenResponseModel(access_token=token["access_token"], token_type="bearer")
+    # return TokenResponseModel(access_token=token["access_token"], token_type="bearer")
+    return {
+        "access_token": token["access_token"],
+        "token_type": "bearer",
+        "user": {
+            "id": token["user"].id,
+            "email": token["user"].email,
+            "name": token["user"].name,
+            "role": token["user"].role,
+            "org_name": token["user"].org_name,
+        },
+    }
 
 
 @authRouter.post("/refresh", response_model=TokenResponseModel)
@@ -291,46 +302,34 @@ def get_logged_in_user(user: UserResponseModel = Depends(get_current_user)):
     return UserResponseModel(**user.model_dump())
 
 
-@authRouter.post("/logout")
+@authRouter.post("/logout", status_code=status.HTTP_200_OK)
 def logout(
     response: Response,
     refresh_token: str | None = Cookie(default=None),  # type: ignore
-    token: HTTPAuthorizationCredentials = Depends(oauth2_scheme),
+    token: HTTPAuthorizationCredentials | None = Depends(oauth2_scheme),
 ):
-    """Log out the current user and revoke their authentication tokens.
-
-    Handles user logout by extracting and revoking both the access and refresh
-    tokens. Both tokens' JTI (JWT ID) claims are added to Redis blocklist,
-    preventing any future use of either token regardless of expiration time.
-
-    Args:
-        logout_data (RefreshRequest): Request object containing:
-            - refresh_token (str): The refresh token to revoke
-        token (HTTPAuthorizationCredentials): The access token from Authorization header.
-            Injected automatically by FastAPI's HTTPBearer dependency system.
-
-    Returns:
-        dict: Response object containing:
-            - detail (str): "Successfully logged out" message
-            - status_code (int): HTTP 200 status code
-
-    Raises:
-        HTTPException: If token extraction or revocation fails.
-
-    HTTP Status Codes:
-        200: User successfully logged out and tokens revoked.
-        401: Invalid or missing authorization token.
-
-    Note:
-        - Both access and refresh tokens are added to Redis blocklist
-        - JTI (JWT ID) claims are extracted and stored with TTL matching token expiry
-        - Tokens cannot be reused for authentication after logout
-        - Redis automatically removes expired JTI entries
-        - Client should discard stored tokens after successful logout
-        - Token revocation is immediate and applies globally
     """
-    val = service.revoke_token(refresh_token=refresh_token, token=token.credentials)  # type: ignore
-    if val:
-        response.delete_cookie(key="refresh_token")
-        return {"detail": "Successfully logged out", "status_code": status.HTTP_200_OK}
-    raise LogoutError()
+    Logout user and invalidate tokens.
+
+    - Always clears refresh cookie
+    - Revokes tokens if present
+    - Never fails due to expired/missing tokens
+    """
+
+    try:
+        service.revoke_token(
+            refresh_token=refresh_token,
+            token=token.credentials if token else None,
+        )
+    except Exception:
+        # logout must never fail
+        pass
+
+    response.delete_cookie(
+        key="refresh_token",
+        httponly=True,
+        secure=True,
+        samesite="lax",
+    )
+
+    return {"detail": "Successfully logged out"}

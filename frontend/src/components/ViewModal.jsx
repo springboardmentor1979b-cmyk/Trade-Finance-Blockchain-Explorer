@@ -47,6 +47,9 @@ const statusStyles = {
 /**
  * ViewModal Component
  * Modal for viewing document details
+ * Supports role-based action rendering:
+ * - Admin: Can view and edit
+ * - Corporate/Bank: Can only view and download
  *
  * @component
  * @param {Object} props - Component props
@@ -54,6 +57,8 @@ const statusStyles = {
  * @param {Object|null} props.document - Document object to display
  * @param {Function} props.onClose - Callback when modal should close
  * @param {Function} props.onEdit - Callback when edit button is clicked
+ * @param {Function} props.onDownload - Callback when download button is clicked
+ * @param {string} props.userRole - Current user's role (admin, corporate, bank)
  *
  * @example
  * <ViewModal
@@ -61,10 +66,22 @@ const statusStyles = {
  *   document={selectedDoc}
  *   onClose={() => setShowModal(false)}
  *   onEdit={handleEdit}
+ *   onDownload={handleDownload}
+ *   userRole="admin"
  * />
  */
-function ViewModal({ isOpen, document, onClose, onEdit }) {
+function ViewModal({
+    isOpen,
+    document,
+    onClose,
+    onEdit,
+    onDownload,
+    userRole = "corporate",
+}) {
     if (!isOpen || !document) return null;
+
+    const canEdit = userRole === "admin";
+    const canDownload = userRole !== "admin"; // Banks and corporates can download
 
     const DocIcon = documentIcons[document.type] || FileText;
     const status = statusStyles[document.status];
@@ -157,20 +174,37 @@ function ViewModal({ isOpen, document, onClose, onEdit }) {
 
                     {/* Action Buttons */}
                     <div className="flex gap-3">
-                        <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors">
-                            <Download className="w-4 h-4" />
-                            Download
-                        </button>
-                        <button
-                            onClick={() => {
-                                onClose();
-                                onEdit(document);
-                            }}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-white/20 rounded-lg text-white hover:bg-white/10 transition-colors"
-                        >
-                            <Edit3 className="w-4 h-4" />
-                            Edit
-                        </button>
+                        {canDownload && (
+                            <button
+                                onClick={() =>
+                                    onDownload && onDownload(document)
+                                }
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
+                            >
+                                <Download className="w-4 h-4" />
+                                Download
+                            </button>
+                        )}
+                        {canEdit && (
+                            <button
+                                onClick={() => {
+                                    onClose();
+                                    onEdit(document);
+                                }}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-yellow-600 hover:bg-yellow-700 rounded-lg text-white font-medium transition-colors"
+                            >
+                                <Edit3 className="w-4 h-4" />
+                                Edit
+                            </button>
+                        )}
+                        {!canDownload && !canEdit && (
+                            <button
+                                onClick={onClose}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-white/20 rounded-lg text-white hover:bg-white/10 transition-colors"
+                            >
+                                Close
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
