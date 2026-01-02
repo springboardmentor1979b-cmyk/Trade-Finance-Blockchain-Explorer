@@ -134,25 +134,6 @@ function UploadModal({
                         )}
                     </div>
 
-                    {/* Document Name */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Document Name
-                        </label>
-                        <input
-                            type="text"
-                            value={uploadForm.name}
-                            onChange={(e) =>
-                                onFormChange({
-                                    ...uploadForm,
-                                    name: e.target.value,
-                                })
-                            }
-                            placeholder="Enter document name"
-                            className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-
                     {/* Document Type */}
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -168,7 +149,10 @@ function UploadModal({
                             }
                             className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                            <option value="loc" className="bg-slate-800">
+                            <option
+                                value="letter_of_credit"
+                                className="bg-slate-800"
+                            >
                                 Letter of Credit
                             </option>
                             <option value="invoice" className="bg-slate-800">
@@ -180,14 +164,20 @@ function UploadModal({
                             >
                                 Bill of Lading
                             </option>
-                            <option value="po" className="bg-slate-800">
+                            <option
+                                value="purchase_order"
+                                className="bg-slate-800"
+                            >
                                 Purchase Order
                             </option>
-                            <option value="coo" className="bg-slate-800">
+                            <option
+                                value="certificate_of_origin"
+                                className="bg-slate-800"
+                            >
                                 Certificate of Origin
                             </option>
                             <option
-                                value="insurance_cert"
+                                value="insurance_certificate"
                                 className="bg-slate-800"
                             >
                                 Insurance Certificate
@@ -195,22 +185,22 @@ function UploadModal({
                         </select>
                     </div>
 
-                    {/* Description */}
+                    {/* Issued At */}
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Description (Optional)
+                            Issued At
                         </label>
-                        <textarea
-                            value={uploadForm.description}
+                        <input
+                            type="datetime-local"
+                            value={uploadForm.issued_at}
                             onChange={(e) =>
                                 onFormChange({
                                     ...uploadForm,
-                                    description: e.target.value,
+                                    issued_at: e.target.value,
                                 })
                             }
-                            rows={3}
-                            placeholder="Enter document description..."
-                            className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                            className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 scheme-dark"
+                            required
                         />
                     </div>
 

@@ -20,12 +20,12 @@ import {
 
 // Document type icons mapping
 const documentIcons = {
-    loc: CreditCard,
+    letter_of_credit: CreditCard,
     invoice: FileText,
     bill_of_lading: Ship,
-    po: FileBox,
-    coo: FileCheck,
-    insurance_cert: Shield,
+    purchase_order: FileBox,
+    certificate_of_origin: FileCheck,
+    insurance_certificate: Shield,
 };
 
 // Status badge styles
@@ -83,7 +83,6 @@ function DocumentTable({
     documents,
     searchQuery,
     filterType,
-    filterStatus,
     onView,
     onEdit,
     onDelete,
@@ -97,13 +96,11 @@ function DocumentTable({
     const canDownload = !isAdmin; // Banks and corporates can download
     // Filter documents
     const filteredDocuments = documents.filter((doc) => {
-        const matchesSearch = doc.name
+        const matchesSearch = (doc.doc_number || "")
             .toLowerCase()
             .includes(searchQuery.toLowerCase());
-        const matchesType = filterType === "all" || doc.type === filterType;
-        const matchesStatus =
-            filterStatus === "all" || doc.status === filterStatus;
-        return matchesSearch && matchesType && matchesStatus;
+        const matchesType = filterType === "all" || doc.doc_type === filterType;
+        return matchesSearch && matchesType;
     });
 
     return (
@@ -113,22 +110,19 @@ function DocumentTable({
                     <thead>
                         <tr className="border-b border-white/10">
                             <th className="text-left py-4 px-6 text-slate-400 font-medium text-sm">
-                                Document
+                                Document Number
                             </th>
                             <th className="text-left py-4 px-6 text-slate-400 font-medium text-sm">
                                 Type
                             </th>
                             <th className="text-left py-4 px-6 text-slate-400 font-medium text-sm">
-                                Status
-                            </th>
-                            <th className="text-left py-4 px-6 text-slate-400 font-medium text-sm">
                                 Uploaded By
                             </th>
                             <th className="text-left py-4 px-6 text-slate-400 font-medium text-sm">
-                                TX Hash
+                                Hash
                             </th>
                             <th className="text-left py-4 px-6 text-slate-400 font-medium text-sm">
-                                Size
+                                Issued At
                             </th>
                             <th className="text-right py-4 px-6 text-slate-400 font-medium text-sm">
                                 Actions
@@ -137,9 +131,8 @@ function DocumentTable({
                     </thead>
                     <tbody>
                         {filteredDocuments.map((doc) => {
-                            const DocIcon = documentIcons[doc.type] || FileText;
-                            const status = statusStyles[doc.status];
-                            const StatusIcon = status?.icon || AlertCircle;
+                            const DocIcon =
+                                documentIcons[doc.doc_type] || FileText;
 
                             return (
                                 <tr
@@ -153,25 +146,19 @@ function DocumentTable({
                                             </div>
                                             <div>
                                                 <p className="text-white font-medium">
-                                                    {doc.name}
+                                                    {doc.doc_number}
                                                 </p>
                                                 <p className="text-slate-400 text-sm">
-                                                    {doc.uploadedAt}
+                                                    {new Date(
+                                                        doc.created_at
+                                                    ).toLocaleDateString()}
                                                 </p>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="py-4 px-6">
                                         <span className="text-slate-300 capitalize">
-                                            {doc.type.replace(/_/g, " ")}
-                                        </span>
-                                    </td>
-                                    <td className="py-4 px-6">
-                                        <span
-                                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${status?.bg} ${status?.text}`}
-                                        >
-                                            <StatusIcon className="w-3.5 h-3.5" />
-                                            {doc.status.replace(/_/g, " ")}
+                                            {doc.doc_type.replace(/_/g, " ")}
                                         </span>
                                     </td>
                                     <td className="py-4 px-6">
@@ -180,17 +167,26 @@ function DocumentTable({
                                                 <Users className="w-4 h-4 text-slate-300" />
                                             </div>
                                             <span className="text-slate-300">
-                                                {doc.uploadedBy}
+                                                {doc.ownerName ||
+                                                    doc.owner_id ||
+                                                    "Me"}
                                             </span>
                                         </div>
                                     </td>
                                     <td className="py-4 px-6">
-                                        <code className="text-blue-400 bg-blue-500/10 px-2 py-1 rounded text-sm font-mono">
-                                            {doc.txHash}
+                                        <code
+                                            className="text-blue-400 bg-blue-500/10 px-2 py-1 rounded text-sm font-mono"
+                                            title={doc.hash}
+                                        >
+                                            {doc.hash
+                                                ? `${doc.hash.substring(0, 8)}...`
+                                                : "N/A"}
                                         </code>
                                     </td>
                                     <td className="py-4 px-6 text-slate-300">
-                                        {doc.size}
+                                        {new Date(
+                                            doc.issued_at
+                                        ).toLocaleDateString()}
                                     </td>
                                     <td className="py-4 px-6">
                                         <div className="flex items-center justify-end gap-2">
