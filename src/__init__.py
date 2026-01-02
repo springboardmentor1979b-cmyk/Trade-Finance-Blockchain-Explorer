@@ -56,6 +56,7 @@ from src.startup_checks import register_startup_checks
 
 from .Auth.router import authRouter
 from .trade_chain.router import trade_chain_router
+from .ledger.router import ledger_router
 from .errors import register_error_handlers
 from .middleware import register_middleware
 
@@ -84,3 +85,4 @@ app.include_router(router=authRouter, prefix="/api/auth", tags=["Authentication"
 app.include_router(
     router=trade_chain_router, prefix="/api/trade_chain", tags=["Trade Chain"]
 )
+app.include_router(router=ledger_router, prefix="/api/ledger", tags=["Ledger"])
