@@ -1,13 +1,13 @@
-from fastapi import APIRouter, Depends, status, Query
+from fastapi import APIRouter, Depends, status , Form,Query
 from src.db.database import get_session
 from src.db.models import Users
-from src.Auth.dependency import role_required, get_current_user
+from src.Auth.dependency import role_required,get_current_user
 from sqlmodel import Session
 from .service import LedgerService
 from .schemas import PaginatedLedgerResponse
 from src.errors import DocumentNotFound
+from src.db.enums import LedgerActionChoices
 from datetime import date
-
 
 ledger_router = APIRouter()
 
@@ -54,3 +54,23 @@ def delete_record(
     res = LedgerService.delete_ledger_entry(record_id, db)
     if not res:
         raise DocumentNotFound
+
+
+@ledger_router.patch("/records/{record_id}", status_code=status.HTTP_200_OK)
+def update_record(
+    record_id: int,
+    action: LedgerActionChoices = Form(...), 
+    db: Session = Depends(get_session),
+    # Restrict dependency to admin only
+    role_check: None = Depends(role_required(["admin","auditor"])),
+):
+    """
+    Update the action field of a ledger record. Restricted to Admin and Auditor users.
+    """
+    updated_record = LedgerService.edit_ledger_action(record_id, action, db)
+    
+    if not updated_record:
+        # Raise 404 if the record doesn't exist
+        raise DocumentNotFound
+        
+    return updated_record
