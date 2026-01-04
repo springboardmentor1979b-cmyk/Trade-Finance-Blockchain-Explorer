@@ -1,5 +1,8 @@
+from datetime import date
+import datetime
 from sqlmodel import Session, select
-from src.db.models import LedgerEntries
+from src.db.models import LedgerEntries,Documents,Users
+from sqlalchemy import func
 
 
 class LedgerService:
@@ -14,7 +17,101 @@ class LedgerService:
         return True
 
     @staticmethod
-    def get_all_ledger_records(db: Session):
-        statement = select(LedgerEntries)
-        results = db.exec(statement).all()
-        return results
+    def get_all_ledger_records(
+        db: Session,
+        page: int,
+        page_size: int,
+        document_number: str | None = None,
+        action: str | None = None,
+        user_name: str | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ):
+        offset = (page - 1) * page_size
+        base_query = select(LedgerEntries).join(Documents).join(Users)
+
+        if document_number:
+            base_query = base_query.where(
+                Documents.doc_number.ilike(f"%{document_number}%")
+            )
+
+        if action:
+            base_query = base_query.where(LedgerEntries.action == action)
+
+        if user_name:
+            base_query = base_query.where(Users.name.ilike(f"%{user_name}%"))
+
+        if start_date:
+            base_query = base_query.where(
+                LedgerEntries.created_at
+                >= datetime.combine(start_date, datetime.min.time())
+            )
+
+        if end_date:
+            base_query = base_query.where(
+                LedgerEntries.created_at
+                <= datetime.combine(end_date, datetime.max.time())
+            )
+
+        # ---- COUNT QUERY (SQLModel-safe) ----
+        total = db.exec(select(func.count()).select_from(base_query.subquery())).one()
+
+        # ---- PAGINATED QUERY ----
+        ledgers = db.exec(
+            base_query.order_by(LedgerEntries.created_at.desc())
+            .offset(offset)
+            .limit(page_size)
+        ).all()
+
+        # ---- RESPONSE MAPPING ----
+        items = [
+            {
+                "id": ledger.id,
+                "document_number": ledger.document.doc_number,
+                "action": ledger.action,
+                "user_name": ledger.actor.name,
+                "created_at": ledger.created_at,
+            }
+            for ledger in ledgers
+        ]
+
+        return {
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "items": items,
+        }
+
+    @staticmethod
+    def get_user_ledger_records(db: Session, page: int, page_size: int, user_id: int):
+        offset = (page - 1) * page_size
+        total = db.exec(select(func.count()).select_from(LedgerEntries)).one()
+        logs = db.exec(
+            select(LedgerEntries)
+            .where(LedgerEntries.actor_id == user_id)
+            .order_by(LedgerEntries.created_at.desc())  # type: ignore
+            .offset(offset)
+            .limit(page_size)
+        ).all()
+
+        return {"total": total, "page": page, "page_size": page_size, "items": logs}
+    
+    @staticmethod
+    def edit_action(ledger_id: int, new_action: str, db: Session):
+        """
+        Updates only the 'action' field of a specific ledger entry.
+        """
+        # Fetch the record by ID
+        statement = select(LedgerEntries).where(LedgerEntries.id == ledger_id)
+        result = db.exec(statement).first()
+        
+        if not result:
+            return None
+            
+        # Update the action field using the new value
+        result.action = new_action
+        
+        db.add(result)
+        db.commit()
+        db.refresh(result)
+        return result
