@@ -1,7 +1,7 @@
 from datetime import date
 import datetime
 from sqlmodel import Session, select
-from src.db.models import LedgerEntries, Documents, Users
+from src.db.models import LedgerEntries,Documents,Users
 from sqlalchemy import func
 
 
@@ -95,3 +95,23 @@ class LedgerService:
         ).all()
 
         return {"total": total, "page": page, "page_size": page_size, "items": logs}
+    
+    @staticmethod
+    def edit_action(ledger_id: int, new_action: str, db: Session):
+        """
+        Updates only the 'action' field of a specific ledger entry.
+        """
+        # Fetch the record by ID
+        statement = select(LedgerEntries).where(LedgerEntries.id == ledger_id)
+        result = db.exec(statement).first()
+        
+        if not result:
+            return None
+            
+        # Update the action field using the new value
+        result.action = new_action
+        
+        db.add(result)
+        db.commit()
+        db.refresh(result)
+        return result
