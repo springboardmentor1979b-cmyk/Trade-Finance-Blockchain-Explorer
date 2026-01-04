@@ -2,30 +2,21 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useState } from "react";
 import { Menu, X, Box } from "lucide-react";
-import api from "../api/axios.js";
 
 function Navbar() {
-    const auth = useAuth();
+    const { logout, isAuthenticated } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
 
-    const handleLogout = async () => {
-        try {
-            await api.post("/api/auth/logout");
-            auth.logout();
-        } catch (err) {
-            console.error("Logout error:", err);
-            auth.logout();
-        }
-    };
+    const handleLinkClick = () => setIsOpen(false);
 
     const navitems = (
         <ul className="flex flex-row gap-6">
-            {auth.isAuthenticated ? (
+            {isAuthenticated ? (
                 <>
                     <li>
                         <NavLink
                             to="/dashboard"
-                            onClick={(isOpen) => setIsOpen(!isOpen)}
+                            onClick={handleLinkClick}
                             className={({ isActive }) =>
                                 `text-semibold italic ${isActive ? "text-orange-400" : "text-white"}`
                             }
@@ -35,8 +26,8 @@ function Navbar() {
                     </li>
                     <li>
                         <button
-                            onClick={(isOpen) => {
-                                handleLogout();
+                            onClick={() => {
+                                logout();
                                 setIsOpen(!isOpen);
                             }}
                             className="text-semibold italic text-white hover:text-orange-400 cursor-pointer"
@@ -61,7 +52,7 @@ function Navbar() {
                     <li>
                         <NavLink
                             to="/login"
-                            onClick={(isOpen) => setIsOpen(!isOpen)}
+                            onClick={handleLinkClick}
                             className={({ isActive }) =>
                                 `text-semibold italic ${isActive ? "text-orange-400" : "text-white"}`
                             }
@@ -72,7 +63,7 @@ function Navbar() {
                     <li>
                         <NavLink
                             to="/signup"
-                            onClick={(isOpen) => setIsOpen(!isOpen)}
+                            onClick={handleLinkClick}
                             className={({ isActive }) =>
                                 `text-semibold italic ${isActive ? "text-orange-400" : "text-white"}`
                             }
@@ -94,67 +85,9 @@ function Navbar() {
                 <Box className="w-6 h-6 text-orange-400" />
                 <h1 className="text-white text-xl font-bold">TradeChain</h1>
             </NavLink>
-            <ul className="hidden md:flex flex-row gap-6">
-                {auth.isAuthenticated ? (
-                    <>
-                        <li>
-                            <NavLink
-                                to="/dashboard"
-                                className={({ isActive }) =>
-                                    `text-semibold italic ${isActive ? "text-orange-400" : "text-white"}`
-                                }
-                            >
-                                Dashboard
-                            </NavLink>
-                        </li>
-                        <li>
-                            <button
-                                onClick={() => {
-                                    handleLogout();
-                                }}
-                                className="text-semibold italic text-white hover:text-orange-400 cursor-pointer"
-                            >
-                                Logout
-                            </button>
-                        </li>
-                    </>
-                ) : (
-                    <>
-                        <li>
-                            <NavLink
-                                to="/"
-                                className={({ isActive }) =>
-                                    `text-semibold italic ${isActive ? "text-orange-400" : "text-white"}`
-                                }
-                            >
-                                Home
-                            </NavLink>
-                        </li>
-                        <li>
-                            <NavLink
-                                to="/login"
-                                className={({ isActive }) =>
-                                    `text-semibold italic ${isActive ? "text-orange-400" : "text-white"}`
-                                }
-                            >
-                                Login
-                            </NavLink>
-                        </li>
-                        <li>
-                            <NavLink
-                                to="/signup"
-                                className={({ isActive }) =>
-                                    `text-semibold italic ${isActive ? "text-orange-400" : "text-white"}`
-                                }
-                            >
-                                Signup
-                            </NavLink>
-                        </li>
-                    </>
-                )}
-            </ul>
+            <ul className="hidden md:flex flex-row gap-6">{navitems}</ul>
 
-            <div className="md:hidden">
+            <div className="block md:hidden">
                 <button
                     onClick={() => setIsOpen((s) => !s)}
                     aria-expanded={isOpen}
