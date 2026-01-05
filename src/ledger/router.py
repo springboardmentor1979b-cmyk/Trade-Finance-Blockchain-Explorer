@@ -1,12 +1,17 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status , Form,Query
 from src.db.database import get_session
 from src.Auth.dependency import role_required, get_current_user
+from src.db.models import Users
+from src.Auth.dependency import role_required,get_current_user
 from sqlmodel import Session
 from .service import LedgerService
+from .schemas import PaginatedLedgerResponse
 from src.errors import DocumentNotFound
 from src.db.models import Users, LedgerEntries
 from .schemas import LedgerCreate
 
+from src.db.enums import LedgerActionChoices
+from datetime import date
 
 ledger_router = APIRouter()
 
@@ -42,12 +47,34 @@ def create_ledger_entry(
     )
 
 
-@ledger_router.get("/records")
+@ledger_router.get("/records/admin", response_model=PaginatedLedgerResponse)
 def get_all_ledger_records_every_user(
+    # Pagination
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
+    # Filters
+    document_number: str | None = Query(None),
+    action: str | None = Query(None),
+    user_name: str | None = Query(None),
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
     db: Session = Depends(get_session),
-    role_check: None = Depends(role_required(["admin"])),
+    role_check: None = Depends(role_required(["admin", "auditor"])),
 ):
-    return LedgerService.get_all_ledger_records(db)
+    return LedgerService.get_all_ledger_records(
+        db, page, page_size, document_number, action, user_name, start_date, end_date
+    )
+
+
+@ledger_router.get("/records/user", response_model=PaginatedLedgerResponse)
+def get_user_ledger_records(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
+    db: Session = Depends(get_session),
+    user: Users = Depends(get_current_user),
+    role_check: None = Depends(role_required(["bank", "corporate"])),
+):
+    return LedgerService.get_user_ledger_records(db, page, page_size, user.id)  # type: ignore
 
 
 @ledger_router.delete("/records/{record_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -62,3 +89,23 @@ def delete_record(
     res = LedgerService.delete_ledger_entry(record_id, db)
     if not res:
         raise DocumentNotFound
+
+
+@ledger_router.patch("/records/{record_id}", status_code=status.HTTP_200_OK)
+def update_record(
+    record_id: int,
+    action: LedgerActionChoices = Form(...), 
+    db: Session = Depends(get_session),
+    # Restrict dependency to admin only
+    role_check: None = Depends(role_required(["admin","auditor"])),
+):
+    """
+    Update the action field of a ledger record. Restricted to Admin and Auditor users.
+    """
+    updated_record = LedgerService.edit_ledger_action(record_id, action, db)
+    
+    if not updated_record:
+        # Raise 404 if the record doesn't exist
+        raise DocumentNotFound
+        
+    return updated_record

@@ -32,14 +32,14 @@ let isRefreshing = false;
 let subscribers = [];
 
 let refreshFailed =
-  localStorage.getItem("refresh_failed") === "true";
+    localStorage.getItem("refresh_failed") === "true";
 
-const addSubscriber = (cb) => subscribers.push(cb);
+    const addSubscriber = (cb) => subscribers.push(cb);
 
-const notifySubscribers = (token) => {
-  subscribers.forEach((cb) => cb(token));
-  subscribers = [];
-};
+    const notifySubscribers = (token) => {
+    subscribers.forEach((cb) => cb(token));
+    subscribers = [];
+    };
 
 /* ================= LOGOUT HANDLER ================= */
 

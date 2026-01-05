@@ -20,6 +20,10 @@ export const AuthProvider = ({ children }) => {
 
     const initAuth = async () => {
         setLoading(true);
+        if (!localStorage.getItem("access_token")) {
+            setLoading(false);
+            return;
+        }
 
         try {
             const res = await api.get("/api/auth/me");
@@ -48,12 +52,26 @@ export const AuthProvider = ({ children }) => {
         navigate("/dashboard");
     };
 
-    const logout = () => {
-        localStorage.clear();
-        setUser(null);
-        setIsAuthenticated(false);
-        navigate("/");
+    const logout = async () => {
+        try {
+            await api.post("/api/auth/logout");
+        } catch (error) {
+            console.error("Logout failed", error);
+        } finally {
+            localStorage.clear();
+            setUser(null);
+            setIsAuthenticated(false);
+            navigate("/");
+        }
     };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <div className="loader ease-linear rounded-full border-8 border-t-8 border-slate-200 h-16 w-16"></div>
+            </div>
+        );
+    }
 
     return (
         <AuthContext.Provider

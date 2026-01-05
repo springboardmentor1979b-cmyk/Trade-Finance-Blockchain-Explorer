@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from src.db.enums import LedgerActionChoices
+from datetime import datetime
 
 
 class LedgerCreate(BaseModel):
@@ -31,3 +32,21 @@ class LedgerCreate(BaseModel):
                 }
             }
         }
+
+
+class LedgerOut(BaseModel):
+    id: int
+    document_number: str
+    action: str
+    user_name: str
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
+
+class PaginatedLedgerResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    items: list[LedgerOut]

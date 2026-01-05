@@ -19,12 +19,12 @@ import {
 
 // Document type icons mapping
 const documentIcons = {
-    loc: CreditCard,
+    letter_of_credit: CreditCard,
     invoice: FileText,
     bill_of_lading: Ship,
-    po: FileBox,
-    coo: FileCheck,
-    insurance_cert: Shield,
+    purchase_order: FileBox,
+    certificate_of_origin: FileCheck,
+    insurance_certificate: Shield,
 };
 
 // Status badge styles
@@ -83,8 +83,7 @@ function ViewModal({
     const canEdit = userRole === "admin";
     const canDownload = userRole !== "admin"; // Banks and corporates can download
 
-    const DocIcon = documentIcons[document.type] || FileText;
-    const status = statusStyles[document.status];
+    const DocIcon = documentIcons[document.doc_type] || FileText;
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -116,10 +115,10 @@ function ViewModal({
                     <div className="grid grid-cols-2 gap-4">
                         <div className="bg-white/5 rounded-lg p-4">
                             <p className="text-slate-400 text-sm">
-                                Document Name
+                                Document Number
                             </p>
                             <p className="text-white font-medium mt-1">
-                                {document.name}
+                                {document.doc_number}
                             </p>
                         </div>
                         <div className="bg-white/5 rounded-lg p-4">
@@ -127,21 +126,7 @@ function ViewModal({
                                 Document Type
                             </p>
                             <p className="text-white font-medium mt-1 capitalize">
-                                {document.type.replace(/_/g, " ")}
-                            </p>
-                        </div>
-                        <div className="bg-white/5 rounded-lg p-4">
-                            <p className="text-slate-400 text-sm">Status</p>
-                            <span
-                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium mt-1 ${status?.bg} ${status?.text}`}
-                            >
-                                {document.status.replace(/_/g, " ")}
-                            </span>
-                        </div>
-                        <div className="bg-white/5 rounded-lg p-4">
-                            <p className="text-slate-400 text-sm">File Size</p>
-                            <p className="text-white font-medium mt-1">
-                                {document.size}
+                                {document.doc_type.replace(/_/g, " ")}
                             </p>
                         </div>
                         <div className="bg-white/5 rounded-lg p-4">
@@ -149,15 +134,19 @@ function ViewModal({
                                 Uploaded By
                             </p>
                             <p className="text-white font-medium mt-1">
-                                {document.uploadedBy}
+                                {document.ownerName ||
+                                    document.owner_id ||
+                                    "Unknown"}
                             </p>
                         </div>
                         <div className="bg-white/5 rounded-lg p-4">
                             <p className="text-slate-400 text-sm">
-                                Upload Date
+                                Issued Date
                             </p>
                             <p className="text-white font-medium mt-1">
-                                {document.uploadedAt}
+                                {new Date(
+                                    document.issued_at
+                                ).toLocaleDateString()}
                             </p>
                         </div>
                     </div>
@@ -168,7 +157,7 @@ function ViewModal({
                             Blockchain Transaction
                         </p>
                         <code className="text-blue-300 font-mono text-sm break-all">
-                            {document.txHash}
+                            {document.hash}
                         </code>
                     </div>
 
