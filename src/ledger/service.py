@@ -1,13 +1,8 @@
-<<<<<<< HEAD
-=======
 from sqlmodel import Session, select 
-from src.db.models import LedgerEntries, Documents
 from fastapi import HTTPException, status
 from .schemas import LedgerCreate
->>>>>>> 7545c9c88d64928b48b565268cb1ba33b67fa76b
 from datetime import date
 import datetime
-from sqlmodel import Session, select
 from src.db.models import LedgerEntries,Documents,Users
 from sqlalchemy import func
 
@@ -153,8 +148,5 @@ class LedgerService:
         db.add(result)
         db.commit()
         db.refresh(result)
-<<<<<<< HEAD
         return result
-=======
-        return result
->>>>>>> 7545c9c88d64928b48b565268cb1ba33b67fa76b
+    
