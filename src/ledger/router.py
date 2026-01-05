@@ -8,20 +8,20 @@ from .service import LedgerService
 from .schemas import PaginatedLedgerResponse
 from src.errors import DocumentNotFound
 from src.db.models import Users, LedgerEntries
-from .schemas import LedgerCreate
+from .schemas import LedgerCreate, LedgerResponse
 
 from src.db.enums import LedgerActionChoices
 from datetime import date
 
 ledger_router = APIRouter()
 
-@ledger_router.post("/entry", response_model=LedgerEntries, status_code=status.HTTP_201_CREATED)
+@ledger_router.post("/entry", response_model=LedgerResponse, status_code=status.HTTP_201_CREATED)
 def create_ledger_entry(
     ledger_data: LedgerCreate,
     db: Session = Depends(get_session),
     user: Users = Depends(get_current_user),
     role_check: None = Depends(role_required(["bank"])),
-) -> LedgerEntries:
+) -> LedgerResponse:
     """Create a new immutable ledger entry for a document.
     
     This endpoint allows bank users to record actions performed on documents,

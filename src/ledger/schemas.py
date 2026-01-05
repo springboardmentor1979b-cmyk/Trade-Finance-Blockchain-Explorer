@@ -19,8 +19,9 @@ class LedgerCreate(BaseModel):
         default={}, 
         description="Additional metadata in JSON format"
     )
-
+    
     class Config:
+        from_attributes = True
         json_schema_extra = {
             "example": {
                 "document_id": 1,
@@ -32,7 +33,33 @@ class LedgerCreate(BaseModel):
                 }
             }
         }
-
+        
+class LedgerResponse(BaseModel):
+    """Schema for ledger entry response."""
+    
+    id: int
+    document_id: int
+    action: LedgerActionChoices
+    actor_id: int
+    metadatav: Dict[str, Any]
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True  # ✅ Ye important hai - SQLModel to Pydantic conversion ke liye
+        json_schema_extra = {
+            "example": {
+                "id": 1,
+                "document_id": 2,
+                "action": "issued",
+                "actor_id": 0,
+                "metadatav": {
+                    "amount": 20000,
+                    "currency": "USD",
+                    "remarks": "Letter of Credit issued successfully"
+                },
+                "created_at": "2026-01-05T09:04:08.497Z"
+            }
+        }
 
 class LedgerOut(BaseModel):
     id: int
