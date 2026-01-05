@@ -1,46 +1,6 @@
 import React from "react";
-import { XCircle, CheckCircle, Clock, Activity } from "lucide-react";
+import { XCircle, Upload, FileText } from "lucide-react";
 
-// Status badge styles
-const statusStyles = {
-    pending: { bg: "bg-yellow-100", text: "text-yellow-800", icon: Clock },
-    in_progress: { bg: "bg-blue-100", text: "text-blue-800", icon: Activity },
-    completed: {
-        bg: "bg-green-100",
-        text: "text-green-800",
-        icon: CheckCircle,
-    },
-    disputed: { bg: "bg-red-100", text: "text-red-800", icon: XCircle },
-    verified: {
-        bg: "bg-emerald-100",
-        text: "text-emerald-800",
-        icon: CheckCircle,
-    },
-};
-
-/**
- * EditModal Component
- * Modal for editing document information
- *
- * @component
- * @param {Object} props - Component props
- * @param {boolean} props.isOpen - Whether the modal is visible
- * @param {Object|null} props.document - Document object being edited
- * @param {Object} props.uploadForm - Form state with name, type, description
- * @param {Function} props.onFormChange - Callback to update form state
- * @param {Function} props.onClose - Callback when modal should close
- * @param {Function} props.onSubmit - Callback when form is submitted
- *
- * @example
- * <EditModal
- *   isOpen={showModal}
- *   document={selectedDoc}
- *   uploadForm={form}
- *   onFormChange={setUploadForm}
- *   onClose={() => setShowModal(false)}
- *   onSubmit={handleSubmit}
- * />
- */
 function EditModal({
     isOpen,
     document,
@@ -48,10 +8,16 @@ function EditModal({
     onFormChange,
     onClose,
     onSubmit,
+    uploadFile,
+    onFileChange,
 }) {
     if (!isOpen || !document) return null;
 
-    const status = statusStyles[document.status];
+    const handleFileInputChange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            onFileChange(e.target.files[0]);
+        }
+    };
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -66,21 +32,68 @@ function EditModal({
                 </div>
 
                 <form onSubmit={onSubmit} className="p-6 space-y-6">
-                    {/* Document Name */}
+                    {/* File Upload (Required for update) */}
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Document Name
+                            New File (Required)
+                        </label>
+                        <div className="border-2 border-dashed border-slate-600 rounded-xl p-4 text-center hover:border-slate-500 transition-colors">
+                            {uploadFile ? (
+                                <div className="flex items-center justify-center gap-3">
+                                    <FileText className="w-6 h-6 text-green-400" />
+                                    <div className="text-left overflow-hidden">
+                                        <p className="text-white font-medium truncate">
+                                            {uploadFile.name}
+                                        </p>
+                                        <p className="text-slate-400 text-xs">
+                                            {(
+                                                uploadFile.size /
+                                                (1024 * 1024)
+                                            ).toFixed(2)}{" "}
+                                            MB
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => onFileChange(null)}
+                                        className="ml-auto p-1 hover:bg-white/10 rounded"
+                                    >
+                                        <XCircle className="w-5 h-5 text-slate-400" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <input
+                                        type="file"
+                                        onChange={handleFileInputChange}
+                                        className="hidden"
+                                        id="edit-file-upload"
+                                        accept=".pdf,.doc,.docx,.jpg,.png"
+                                    />
+                                    <label
+                                        htmlFor="edit-file-upload"
+                                        className="flex flex-col items-center cursor-pointer"
+                                    >
+                                        <Upload className="w-8 h-8 text-slate-400 mb-2" />
+                                        <span className="text-blue-400 text-sm font-medium">
+                                            Click to upload new file
+                                        </span>
+                                    </label>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Document Number (Read-only) */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                            Document Number
                         </label>
                         <input
                             type="text"
-                            value={uploadForm.name}
-                            onChange={(e) =>
-                                onFormChange({
-                                    ...uploadForm,
-                                    name: e.target.value,
-                                })
-                            }
-                            className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value={document.doc_number}
+                            readOnly
+                            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-slate-400 cursor-not-allowed focus:outline-none"
                         />
                     </div>
 
@@ -99,7 +112,10 @@ function EditModal({
                             }
                             className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                            <option value="loc" className="bg-slate-800">
+                            <option
+                                value="letter_of_credit"
+                                className="bg-slate-800"
+                            >
                                 Letter of Credit
                             </option>
                             <option value="invoice" className="bg-slate-800">
@@ -111,31 +127,25 @@ function EditModal({
                             >
                                 Bill of Lading
                             </option>
-                            <option value="po" className="bg-slate-800">
+                            <option
+                                value="purchase_order"
+                                className="bg-slate-800"
+                            >
                                 Purchase Order
                             </option>
-                            <option value="coo" className="bg-slate-800">
+                            <option
+                                value="certificate_of_origin"
+                                className="bg-slate-800"
+                            >
                                 Certificate of Origin
                             </option>
                             <option
-                                value="insurance_cert"
+                                value="insurance_certificate"
                                 className="bg-slate-800"
                             >
                                 Insurance Certificate
                             </option>
                         </select>
-                    </div>
-
-                    {/* Current Status */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Current Status
-                        </label>
-                        <span
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${status?.bg} ${status?.text}`}
-                        >
-                            {document.status.replace(/_/g, " ")}
-                        </span>
                     </div>
 
                     {/* Buttons */}
@@ -149,7 +159,8 @@ function EditModal({
                         </button>
                         <button
                             type="submit"
-                            className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
+                            disabled={!uploadFile}
+                            className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors"
                         >
                             Save Changes
                         </button>
