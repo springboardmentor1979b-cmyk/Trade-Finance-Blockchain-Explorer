@@ -1,13 +1,8 @@
-from sqlmodel import Session, select
-from src.db.models import LedgerEntries, Documents
-from sqlmodel import Session, select
+from src.db.models import LedgerEntries, Documents, Users
 from fastapi import HTTPException, status
 from .schemas import LedgerCreate
-from datetime import date
-import datetime
+from datetime import date, datetime
 from sqlmodel import Session, select
-from src.db.models import LedgerEntries, Documents, Users
-from src.db.models import LedgerEntries, Documents, Users
 from sqlalchemy import func
 
 
@@ -34,7 +29,7 @@ class LedgerService:
             action=ledger_data.action,
             actor_id=actor_id,
             metadatav=ledger_data.metadatav or {},
-        )
+        )  # type: ignore
 
         # 3. Save to database
         db.add(new_entry)
@@ -69,14 +64,14 @@ class LedgerService:
 
         if document_number:
             base_query = base_query.where(
-                Documents.doc_number.ilike(f"%{document_number}%")
+                Documents.doc_number.ilike(f"%{document_number}%")  # type: ignore
             )
 
         if action:
             base_query = base_query.where(LedgerEntries.action == action)
 
         if user_name:
-            base_query = base_query.where(Users.name.ilike(f"%{user_name}%"))
+            base_query = base_query.where(Users.name.ilike(f"%{user_name}%"))  # type: ignore
 
         if start_date:
             base_query = base_query.where(
@@ -95,7 +90,7 @@ class LedgerService:
 
         # ---- PAGINATED QUERY ----
         ledgers = db.exec(
-            base_query.order_by(LedgerEntries.created_at.desc())
+            base_query.order_by(LedgerEntries.created_at.desc())  # type: ignore
             .offset(offset)
             .limit(page_size)
         ).all()
@@ -104,9 +99,9 @@ class LedgerService:
         items = [
             {
                 "id": ledger.id,
-                "document_number": ledger.document.doc_number,
+                "document_number": ledger.document.doc_number,  # type: ignore
                 "action": ledger.action,
-                "user_name": ledger.actor.name,
+                "user_name": ledger.actor.name,  # type: ignore
                 "created_at": ledger.created_at,
             }
             for ledger in ledgers
@@ -146,7 +141,7 @@ class LedgerService:
             return None
 
         # Update the action field using the new value
-        result.action = new_action
+        result.action = new_action  # type: ignore
 
         db.add(result)
         db.commit()
