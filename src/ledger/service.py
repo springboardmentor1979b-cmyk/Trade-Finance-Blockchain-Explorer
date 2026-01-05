@@ -1,19 +1,15 @@
-<<<<<<< HEAD
-=======
-from sqlmodel import Session, select 
+from sqlmodel import Session, select
 from src.db.models import LedgerEntries, Documents
 from fastapi import HTTPException, status
 from .schemas import LedgerCreate
->>>>>>> 7545c9c88d64928b48b565268cb1ba33b67fa76b
 from datetime import date
 import datetime
 from sqlmodel import Session, select
-from src.db.models import LedgerEntries,Documents,Users
+from src.db.models import LedgerEntries, Documents, Users
 from sqlalchemy import func
 
 
 class LedgerService:
-    
     @staticmethod
     def create_ledger_entry(
         ledger_data: LedgerCreate,
@@ -21,15 +17,15 @@ class LedgerService:
         db: Session,
     ) -> LedgerEntries:
         """Create a new ledger entry for a document."""
-        
+
         # 1. Check if document exists
         document = db.get(Documents, ledger_data.document_id)
         if not document:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Document with ID {ledger_data.document_id} not found"
+                detail=f"Document with ID {ledger_data.document_id} not found",
             )
-        
+
         # 2. Create new ledger entry
         new_entry = LedgerEntries(
             document_id=ledger_data.document_id,
@@ -37,14 +33,14 @@ class LedgerService:
             actor_id=actor_id,
             metadatav=ledger_data.metadatav or {},
         )
-        
+
         # 3. Save to database
         db.add(new_entry)
         db.commit()
         db.refresh(new_entry)
-        
+
         return new_entry
-    
+
     @staticmethod
     def delete_ledger_entry(ledger_id: int, db: Session):
         statement = select(LedgerEntries).where(LedgerEntries.id == ledger_id)
@@ -134,7 +130,7 @@ class LedgerService:
         ).all()
 
         return {"total": total, "page": page, "page_size": page_size, "items": logs}
-    
+
     @staticmethod
     def edit_action(ledger_id: int, new_action: str, db: Session):
         """
@@ -143,18 +139,14 @@ class LedgerService:
         # Fetch the record by ID
         statement = select(LedgerEntries).where(LedgerEntries.id == ledger_id)
         result = db.exec(statement).first()
-        
+
         if not result:
             return None
-            
+
         # Update the action field using the new value
         result.action = new_action
-        
+
         db.add(result)
         db.commit()
         db.refresh(result)
-<<<<<<< HEAD
         return result
-=======
-        return result
->>>>>>> 7545c9c88d64928b48b565268cb1ba33b67fa76b

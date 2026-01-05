@@ -1,27 +1,16 @@
 from fastapi import APIRouter, Depends, status , Form,Query
 from src.db.database import get_session
-<<<<<<< HEAD
-=======
-from src.Auth.dependency import role_required, get_current_user
->>>>>>> 7545c9c88d64928b48b565268cb1ba33b67fa76b
 from src.db.models import Users
 from src.Auth.dependency import role_required,get_current_user
 from sqlmodel import Session
 from .service import LedgerService
 from .schemas import PaginatedLedgerResponse
 from src.errors import DocumentNotFound
-<<<<<<< HEAD
-=======
-from src.db.models import Users, LedgerEntries
-from .schemas import LedgerCreate, LedgerResponse
-
->>>>>>> 7545c9c88d64928b48b565268cb1ba33b67fa76b
 from src.db.enums import LedgerActionChoices
 from datetime import date
 
 ledger_router = APIRouter()
 
-<<<<<<< HEAD
 
 @ledger_router.get("/records/admin", response_model=PaginatedLedgerResponse)
 def get_all_ledger_records_every_user(
@@ -35,7 +24,8 @@ def get_all_ledger_records_every_user(
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
     db: Session = Depends(get_session),
-=======
+
+
 @ledger_router.post("/entry", response_model=LedgerResponse, status_code=status.HTTP_201_CREATED)
 def create_ledger_entry(
     ledger_data: LedgerCreate,
@@ -80,7 +70,6 @@ def get_all_ledger_records_every_user(
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
     db: Session = Depends(get_session),
->>>>>>> 7545c9c88d64928b48b565268cb1ba33b67fa76b
     role_check: None = Depends(role_required(["admin", "auditor"])),
 ):
     return LedgerService.get_all_ledger_records(
@@ -130,8 +119,4 @@ def update_record(
         # Raise 404 if the record doesn't exist
         raise DocumentNotFound
         
-<<<<<<< HEAD
     return updated_record
-=======
-    return updated_record
->>>>>>> 7545c9c88d64928b48b565268cb1ba33b67fa76b
