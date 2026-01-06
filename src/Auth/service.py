@@ -39,8 +39,9 @@ import time
 
 from fastapi import Response
 from sqlmodel import Session, select
+from datetime import datetime, timedelta, timezone
 
-from src.db.models import Users
+from src.db.models import Users, PasswordResetTokens
 from src.db.redis import add_jti_blocklist
 from src.errors import (
     InvalidCredentials,
@@ -52,13 +53,15 @@ from src.errors import (
     UserNotFound,
 )
 
-from .schemas import UserCreateModel, UserLoginModel
+from .schemas import UserCreateModel, UserLoginModel, UserEmailModel
 from .utils import (
     JWTHandler,
     hash_password,
     validate_email,
     validate_password,
     verify_password,
+    generate_otp,
+    verify_otp,
 )
 
 
@@ -372,4 +375,106 @@ class authService:
             except Exception:
                 pass  # logout must never fail
 
+        return True
+
+    def initiate_password_reset(self, email: UserEmailModel, db: Session):
+        """Initiate password reset process for a user.
+
+        Validates the provided email and checks if a user exists with that email.
+        If the user exists, generates a password reset token and sends it via email.
+
+        Args:
+            email (str): The email address of the user requesting password reset.
+            db (Session): SQLModel database session for user lookup.
+        Returns:
+            bool: True if the password reset process was initiated successfully.
+        Raises:
+            InvalidEmailFormat: If the email format is invalid (status 400).
+            UserNotFound: If no user exists with the provided email (status 404).
+        """
+        if validate_email(email.email) is False:
+            raise InvalidEmailFormat()
+
+        user = self.get_user_by_email(email.email, db)
+        if not user:
+            raise UserNotFound()
+
+        existing_tokens = db.exec(
+            select(PasswordResetTokens).where(PasswordResetTokens.user_id == user.id)
+        ).all()
+
+        for token in existing_tokens:
+            token.is_used = True
+
+        print("Password reset token generated and sent via email (simulated).")
+        otp = generate_otp()
+        expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
+        new_token = PasswordResetTokens(user_id=user.id, token=otp, expires_at=expiry)  # type: ignore
+        db.add(new_token)
+        db.commit()
+        db.refresh(new_token)
+        print(f"the otp is : {otp} for email {email}")
+        return True
+
+    def verify_otp_service(self, email: str, otp: str, db: Session):
+        """Verify the provided OTP for password reset.
+
+        Validates the OTP against the expected value. If valid, allows the user
+        to proceed with password reset.
+
+        Args:
+            otp (str): The one-time password provided by the user.
+            db (Session): SQLModel database session for user lookup.
+
+        Returns:
+            bool: True if OTP is valid, False otherwise.
+
+        Raises:
+            InvalidCredentials: If the OTP is invalid or expired (status 400).
+        """
+        user = self.get_user_by_email(email, db)
+        if not user:
+            raise UserNotFound()
+        token_entry = db.exec(
+            select(PasswordResetTokens)
+            .where(PasswordResetTokens.user_id == user.id)
+            .order_by(PasswordResetTokens.created_at.desc())  # type: ignore
+        ).first()
+        if not token_entry:
+            raise InvalidCredentials()
+        expires_at = token_entry.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc) and not token_entry.is_used:
+            raise InvalidCredentials()
+        return verify_otp(otp, token_entry.token)
+
+    def reset_password(self, email: str, new_password: str, db: Session):
+        """Reset the user's password.
+
+        Validates the new password strength and updates the user's password in the database.
+
+        Args:
+            new_password (str): The new password to set for the user.
+            db (Session): SQLModel database session for user lookup and update.
+
+        Returns:
+            bool: True if password was successfully reset.
+
+        Raises:
+            InvalidCredentials: If the new password fails strength validation (status 400).
+        """
+        errors = validate_password(new_password)
+        if errors:
+            raise InvalidCredentials()
+
+        user = self.get_user_by_email(email, db)
+        if not user:
+            raise UserNotFound()
+
+        hashed = hash_password(new_password)
+        user.password = hashed
+        db.add(user)
+        db.commit()
+        db.refresh(user)
         return True

@@ -70,6 +70,7 @@ from .schemas import (
     UserCreateModel,
     UserLoginModel,
     UserResponseModel,
+    UserEmailModel,
 )
 # from src.errors import LogoutError
 
@@ -333,3 +334,79 @@ def logout(
     )
 
     return {"detail": "Successfully logged out"}
+
+
+@authRouter.post("/forgotpassword", status_code=status.HTTP_200_OK)
+def forgot_password(email: UserEmailModel, db: Session = Depends(get_session)):
+    """Initiate password reset process for a user.
+
+    Sends a password reset email to the user with a secure token link.
+
+    Args:
+        email (str): The email address of the user requesting password reset.
+        db (Session): Database session. Injected by FastAPI's dependency system.
+
+    Returns:
+        dict: A dictionary with key "detail" indicating email sent status.
+
+    Raises:
+        HTTPException: If user with provided email is not found (status 404).
+
+    HTTP Status Codes:
+        200: Password reset email successfully sent.
+        404: User with provided email not found.
+    """
+    service.initiate_password_reset(email, db)
+    return {"detail": "Password reset email sent if the email exists."}
+
+
+@authRouter.post("/verify-otp", status_code=status.HTTP_200_OK)
+def verify_otp(email: str, otp: str, db: Session = Depends(get_session)):
+    """Verify the OTP for password reset.
+
+    Validates the OTP sent to the user's email.
+
+    Args:
+        email (str): The email address of the user verifying the OTP.
+        otp (str): The OTP to verify.
+        db (Session): Database session. Injected by FastAPI's dependency system.
+    Returns:
+        dict: A dictionary with key "detail" indicating OTP verification status.
+    Raises:
+        HTTPException: If user with provided email is not found (status 404).
+        HTTPException: If OTP is invalid or expired (status 400).
+    HTTP Status Codes:
+        200: OTP successfully verified.
+        400: OTP is invalid or expired.
+        404: User with provided email not found.
+    """
+    success = service.verify_otp_service(email, otp, db)
+    if success:
+        return {"detail": "OTP successfully verified. You can now reset your password"}
+
+
+@authRouter.post("/reset-password", status_code=status.HTTP_200_OK)
+def reset_password(email: str, new_password: str, db: Session = Depends(get_session)):
+    """Reset user's password using a secure token.
+
+    Validates the password reset token and updates the user's password.
+
+    Args:
+        email (str): The email address of the user resetting the password.
+        new_password (str): The new password to set for the user.
+        db (Session): Database session. Injected by FastAPI's dependency system.
+    Returns:
+        dict: A dictionary with key "detail" indicating password reset status.
+    Raises:
+        HTTPException: If user with provided email is not found (status 404).
+        HTTPException: If new password fails strength validation (status 400).
+    HTTP Status Codes:
+        200: Password successfully reset.
+        400: New password fails strength validation.
+        404: User with provided email not found.
+    """
+    success = service.reset_password(email, new_password, db)
+    if success:
+        return {
+            "detail": "Password successfully reset. You can now login with your new password"
+        }

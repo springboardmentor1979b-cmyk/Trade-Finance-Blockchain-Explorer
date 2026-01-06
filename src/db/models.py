@@ -241,3 +241,41 @@ class Users(SQLModel, table=True):
     audit_logs: List[AuditLogs] = Relationship(back_populates="admin")
     ledger_entries: List[LedgerEntries] = Relationship(back_populates="actor")
     risk_scores: List[RiskScores] = Relationship(back_populates="user")
+    password_reset_tokens: List["PasswordResetTokens"] = Relationship(
+        back_populates="user"
+    )
+
+
+class PasswordResetTokens(SQLModel, table=True):
+    """Password reset token model for secure password recovery.
+
+    Stores one-time tokens for password reset requests, linked to user accounts.
+    Tokens have an expiration time to enhance security.
+
+    Attributes:
+        id: Primary key identifier for the password reset token.
+        user_id: Foreign key reference to the user requesting the password reset.
+        token: Unique token string used for password reset verification.
+        expires_at: Timestamp when the token expires and becomes invalid.
+        created_at: Timestamp when the token was created.
+        user: Relationship to the Users model.
+    """
+
+    id: Optional[int] = Field(primary_key=True, default=None)
+    user_id: int = Field(foreign_key="users.id")
+    token: str = Field(unique=True, index=True)
+    is_used: bool = Field(default=False)
+    expires_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),  # IMPORTANT
+            nullable=False,
+        )
+    )
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True), server_default=func.now(), nullable=False
+        )
+    )
+
+    # Relationships
+    user: Optional["Users"] = Relationship(back_populates="password_reset_tokens")

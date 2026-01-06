@@ -134,6 +134,40 @@ def validate_email(email: str) -> bool:
     return bool(email_regex.match(email))
 
 
+def generate_otp() -> str:
+    """Generate a 6-digit numeric One-Time Password (OTP).
+
+    Creates a random 6-digit OTP code for use in multi-factor authentication
+    or verification processes. The OTP consists solely of numeric digits.
+
+    Returns:
+        str: A string representing the 6-digit OTP code.
+
+    Note:
+        - The OTP is randomly generated each time this function is called.
+        - Suitable for short-term use in authentication flows.
+    """
+    from random import randint
+
+    otp = f"{randint(100000, 999999)}"
+    return otp
+
+
+def verify_otp(provided_otp: str, actual_otp: str) -> bool:
+    """Verify a provided OTP against the actual OTP.
+
+    Compares the OTP code provided by the user with the actual OTP code
+    generated and sent to the user. Returns True if they match, False otherwise.
+
+    Args:
+        provided_otp (str): The OTP code provided by the user.
+        actual_otp (str): The actual OTP code generated and sent to the user.
+    Returns:
+        bool: True if the provided OTP matches the actual OTP, False otherwise.
+    """
+    return provided_otp == actual_otp
+
+
 class JWTHandler:
     """JWT token handler for token creation and validation.
 

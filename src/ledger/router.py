@@ -97,7 +97,6 @@ def update_record(
     record_id: int,
     action: LedgerActionChoices = Form(...),
     db: Session = Depends(get_session),
-    # Restrict dependency to admin only
     role_check: None = Depends(role_required(["admin", "auditor"])),
 ):
     """
