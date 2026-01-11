@@ -64,6 +64,14 @@ function Login() {
                         {showPassword ? <Eye /> : <EyeClosed />}
                     </span>
                 </div>
+                <p className="text-right">
+                    <Link
+                        to="/forgotpassword"
+                        className="text-sm text-white/80 hover:underline hover:text-orange-500"
+                    >
+                        Forgot Password?
+                    </Link>
+                </p>
                 {error && <p className="text-red-500 text-sm">{error}</p>}
                 <button
                     type="submit"

@@ -57,4 +57,4 @@ def test_client():
     Returns:
         TestClient: A test client for making HTTP requests to the FastAPI app.
     """
-    return TestClient(app)
+    return TestClient(app, base_url="http://localhost")

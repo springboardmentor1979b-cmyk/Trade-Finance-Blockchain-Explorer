@@ -91,3 +91,16 @@ class RefreshRequest(BaseModel):
     """
 
     refresh_token: str
+
+
+class UserEmailModel(BaseModel):
+    """User email model.
+
+    Pydantic model for validating requests that require only the user's email address.
+    Used in scenarios like password reset requests.
+
+    Attributes:
+        email (EmailStr): Email address of the user. Must be a valid email format.
+    """
+
+    email: EmailStr
