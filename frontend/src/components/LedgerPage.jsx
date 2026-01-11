@@ -32,9 +32,15 @@ function LedgerPage({ onClose }) {
         Array.from({ length: 50 }, (_, index) => ({
             id: index + 1,
             document_number: `DOC-${String(index + 1).padStart(3, "0")}-2024`,
-            action: ["issued", "amended", "shipped", "received", "paid", "cancelled", "verified"][
-                index % 7
-            ],
+            action: [
+                "issued",
+                "amended",
+                "shipped",
+                "received",
+                "paid",
+                "cancelled",
+                "verified",
+            ][index % 7],
             user_name: [
                 "John Smith",
                 "Admin User",
@@ -109,9 +115,7 @@ function LedgerPage({ onClose }) {
 
         // Update ledger
         const updatedLedgers = ledgers.map((l) =>
-            l.id === selectedLedger.id
-                ? { ...l, action: editForm.action }
-                : l
+            l.id === selectedLedger.id ? { ...l, action: editForm.action } : l
         );
 
         setLedgers(updatedLedgers);
@@ -122,7 +126,9 @@ function LedgerPage({ onClose }) {
     };
 
     const handleDelete = (ledgerId) => {
-        if (window.confirm("Are you sure you want to delete this ledger entry?")) {
+        if (
+            window.confirm("Are you sure you want to delete this ledger entry?")
+        ) {
             setLedgers(ledgers.filter((l) => l.id !== ledgerId));
             toast.success("Ledger entry deleted successfully");
         }
@@ -149,7 +155,7 @@ function LedgerPage({ onClose }) {
 
     if (!canViewLedgers) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+            <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
                 <button
                     onClick={onClose}
                     className="mb-6 flex items-center gap-2 text-slate-300 hover:text-white transition-colors"
@@ -207,7 +213,7 @@ function LedgerPage({ onClose }) {
                                     {ledgers.length}
                                 </p>
                             </div>
-                            <FileText className="w-12 h-12 text-blue-500/20 text-blue-400" />
+                            <FileText className="w-12 h-12 text-blue-500/20" />
                         </div>
                     </div>
 
@@ -222,14 +228,12 @@ function LedgerPage({ onClose }) {
                                         ledgers.filter(
                                             (l) =>
                                                 new Date(l.created_at) >
-                                                new Date(
-                                                    Date.now() - 86400000
-                                                )
+                                                new Date(Date.now() - 86400000)
                                         ).length
                                     }
                                 </p>
                             </div>
-                            <CheckCircle className="w-12 h-12 text-green-500/20 text-green-400" />
+                            <CheckCircle className="w-12 h-12 text-green-500/20" />
                         </div>
                     </div>
 
@@ -246,7 +250,7 @@ function LedgerPage({ onClose }) {
                                     }
                                 </p>
                             </div>
-                            <AlertCircle className="w-12 h-12 text-orange-500/20 text-orange-400" />
+                            <AlertCircle className="w-12 h-12 text-orange-500/20" />
                         </div>
                     </div>
                 </div>
