@@ -72,11 +72,6 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (config.url?.includes("/api/auth/me")) {
-      logout();
-      return Promise.reject(error);
-    }
-
     if (
       response.status === 403 &&
       response.data?.error_code === "refresh_token_required"

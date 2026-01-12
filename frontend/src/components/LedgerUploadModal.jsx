@@ -1,0 +1,165 @@
+import React from "react";
+import { XCircle, Upload, FileText } from "lucide-react";
+
+/**
+ * LedgerUploadModal Component
+ * Modal for creating a new ledger entry
+ * Bank and Corporate users can create ledgers
+ *
+ * @component
+ * @param {Object} props - Component props
+ * @param {boolean} props.isOpen - Whether the modal is open
+ * @param {Object} props.formData - Current form data
+ * @param {Function} props.onFormChange - Callback when form data changes
+ * @param {Function} props.onClose - Callback when modal is closed
+ * @param {Function} props.onSubmit - Callback when form is submitted
+ * @param {File} props.uploadFile - Currently selected file
+ * @param {Function} props.onFileChange - Callback when file is changed
+ */
+function LedgerUploadModal({
+    isOpen,
+    formData,
+    onFormChange,
+    onClose,
+    onSubmit,
+    uploadFile,
+    onFileChange,
+}) {
+    if (!isOpen) return null;
+
+    const handleFileInputChange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            onFileChange(e.target.files[0]);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-slate-800 rounded-2xl w-full max-w-lg border border-white/10 shadow-2xl">
+                <div className="p-6 border-b border-white/10">
+                    <h2 className="text-xl font-semibold text-white">
+                        Create New Ledger Entry
+                    </h2>
+                    <p className="text-slate-400 text-sm mt-1">
+                        Add a new ledger entry to the blockchain
+                    </p>
+                </div>
+
+                <form onSubmit={onSubmit} className="p-6 space-y-6">
+                    {/* File Upload */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                            Ledger File *
+                        </label>
+                        <div className="border-2 border-dashed border-slate-600 rounded-xl p-4 text-center hover:border-slate-500 transition-colors">
+                            {uploadFile ? (
+                                <div className="flex items-center justify-center gap-3">
+                                    <FileText className="w-6 h-6 text-green-400" />
+                                    <div className="text-left overflow-hidden">
+                                        <p className="text-white font-medium truncate">
+                                            {uploadFile.name}
+                                        </p>
+                                        <p className="text-slate-400 text-xs">
+                                            {(
+                                                uploadFile.size /
+                                                (1024 * 1024)
+                                            ).toFixed(2)}{" "}
+                                            MB
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => onFileChange(null)}
+                                        className="ml-auto p-1 hover:bg-white/10 rounded"
+                                    >
+                                        <XCircle className="w-5 h-5 text-slate-400" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <input
+                                        type="file"
+                                        onChange={handleFileInputChange}
+                                        className="hidden"
+                                        id="ledger-file-upload"
+                                        accept=".pdf,.doc,.docx,.json"
+                                    />
+                                    <label
+                                        htmlFor="ledger-file-upload"
+                                        className="flex flex-col items-center cursor-pointer"
+                                    >
+                                        <Upload className="w-8 h-8 text-slate-400 mb-2" />
+                                        <span className="text-blue-400 text-sm font-medium">
+                                            Click to upload ledger file
+                                        </span>
+                                        <span className="text-slate-500 text-xs mt-1">
+                                            PDF, DOC, DOCX, or JSON
+                                        </span>
+                                    </label>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Document Number */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                            Document Number *
+                        </label>
+                        <input
+                            type="text"
+                            value={formData.document_number || ""}
+                            onChange={(e) =>
+                                onFormChange({
+                                    ...formData,
+                                    document_number: e.target.value,
+                                })
+                            }
+                            placeholder="e.g., DOC-001-2024"
+                            className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                            Description
+                        </label>
+                        <textarea
+                            value={formData.description || ""}
+                            onChange={(e) =>
+                                onFormChange({
+                                    ...formData,
+                                    description: e.target.value,
+                                })
+                            }
+                            placeholder="Enter ledger description..."
+                            rows="3"
+                            className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                        />
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex gap-3 pt-2">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="flex-1 px-4 py-2.5 border border-white/20 rounded-lg text-white hover:bg-white/10 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={!uploadFile || !formData.document_number}
+                            className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors"
+                        >
+                            Create Ledger
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+export default LedgerUploadModal;

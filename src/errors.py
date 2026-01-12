@@ -5,9 +5,11 @@ and token management errors. Provides centralized error handlers that register w
 FastAPI to return consistent JSON error responses across the API.
 """
 
-from fastapi import FastAPI, Request, status
 from typing import Any, Callable
+
+from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
+from jose import ExpiredSignatureError, JWTError
 
 
 class TradeExplorerException(Exception):
@@ -502,6 +504,30 @@ def register_error_handlers(app: FastAPI):
                 "message": "An error occurred during document deletion",
                 "error_code": "document_delete_error",
                 "resolution": "Please try deleting the document again later",
+            },
+        ),
+    )
+
+    app.add_exception_handler(
+        ExpiredSignatureError,
+        create_exception_handler(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            initial_detail={
+                "message": "Token has expired",
+                "resolution": "Please refresh your token",
+                "error_code": "token_expired",
+            },
+        ),
+    )
+
+    app.add_exception_handler(
+        JWTError,
+        create_exception_handler(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            initial_detail={
+                "message": "Invalid token",
+                "resolution": "Please provide a valid token",
+                "error_code": "invalid_token",
             },
         ),
     )
