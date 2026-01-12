@@ -57,6 +57,7 @@ from src.startup_checks import register_startup_checks
 from .Auth.router import authRouter
 from .trade_chain.router import trade_chain_router
 from .ledger.router import ledger_router
+from .trade_transaction.router import transaction_router
 from .errors import register_error_handlers
 from .middleware import register_middleware
 
@@ -82,7 +83,6 @@ register_startup_checks(app, DATABASE_URL, REDIS_URL)
 
 # Register authentication router with API prefix and tags
 app.include_router(router=authRouter, prefix="/api/auth", tags=["Authentication"])
-app.include_router(
-    router=trade_chain_router, prefix="/api/trade_chain", tags=["Trade Chain"]
-)
+app.include_router(router=trade_chain_router, prefix="/api/trade_chain", tags=["Trade Chain"])
 app.include_router(router=ledger_router, prefix="/api/ledger", tags=["Ledger"])
+app.include_router(router=transaction_router, prefix="/api/transaction", tags=["Transaction"])
