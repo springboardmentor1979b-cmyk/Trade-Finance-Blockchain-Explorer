@@ -24,6 +24,7 @@ function LedgerUploadModal({
     onSubmit,
     uploadFile,
     onFileChange,
+    documents = [],
 }) {
     if (!isOpen) return null;
 
@@ -46,10 +47,10 @@ function LedgerUploadModal({
                 </div>
 
                 <form onSubmit={onSubmit} className="p-6 space-y-6">
-                    {/* File Upload */}
+                    {/* File Upload (Optional) */}
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Ledger File *
+                            Ledger File (Optional)
                         </label>
                         <div className="border-2 border-dashed border-slate-600 rounded-xl p-4 text-center hover:border-slate-500 transition-colors">
                             {uploadFile ? (
@@ -69,7 +70,13 @@ function LedgerUploadModal({
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() => onFileChange(null)}
+                                        onClick={() =>
+                                            onFileChange
+                                                ? onFileChange(null)
+                                                : console.warn(
+                                                      "onFileChange prop missing"
+                                                  )
+                                        }
                                         className="ml-auto p-1 hover:bg-white/10 rounded"
                                     >
                                         <XCircle className="w-5 h-5 text-slate-400" />
@@ -93,7 +100,7 @@ function LedgerUploadModal({
                                             Click to upload ledger file
                                         </span>
                                         <span className="text-slate-500 text-xs mt-1">
-                                            PDF, DOC, DOCX, or JSON
+                                            To create a new document
                                         </span>
                                     </label>
                                 </>
@@ -101,24 +108,107 @@ function LedgerUploadModal({
                         </div>
                     </div>
 
-                    {/* Document Number */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Document Number *
-                        </label>
-                        <input
-                            type="text"
-                            value={formData.document_number || ""}
-                            onChange={(e) =>
-                                onFormChange({
-                                    ...formData,
-                                    document_number: e.target.value,
-                                })
-                            }
-                            placeholder="e.g., DOC-001-2024"
-                            className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                    </div>
+                    {/* Dynamic Fields based on File Upload */}
+                    {uploadFile ? (
+                        <>
+                            {/* Document Type (For New Document) */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                    Document Type *
+                                </label>
+                                <select
+                                    value={formData.doc_type || ""}
+                                    onChange={(e) =>
+                                        onFormChange({
+                                            ...formData,
+                                            doc_type: e.target.value,
+                                        })
+                                    }
+                                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent [&>option]:text-slate-900"
+                                >
+                                    <option value="">
+                                        Select Document Type
+                                    </option>
+                                    <option value="letter_of_credit">
+                                        Letter of Credit
+                                    </option>
+                                    <option value="invoice">Invoice</option>
+                                    <option value="bill_of_lading">
+                                        Bill of Lading
+                                    </option>
+                                    <option value="purchase_order">
+                                        Purchase Order
+                                    </option>
+                                    <option value="certificate_of_origin">
+                                        Certificate of Origin
+                                    </option>
+                                    <option value="insurance_certificate">
+                                        Insurance Certificate
+                                    </option>
+                                </select>
+                            </div>
+
+                            {/* Issued At (For New Document) */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                    Issued At *
+                                </label>
+                                <input
+                                    type="date"
+                                    value={formData.issued_at || ""}
+                                    onChange={(e) =>
+                                        onFormChange({
+                                            ...formData,
+                                            issued_at: e.target.value,
+                                        })
+                                    }
+                                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent scheme-dark"
+                                />
+                            </div>
+                        </>
+                    ) : (
+                        /* Document Number (For Existing Document) */
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                                Document Number *
+                            </label>
+                            {documents && documents.length > 0 ? (
+                                <select
+                                    value={formData.document_number || ""}
+                                    onChange={(e) =>
+                                        onFormChange({
+                                            ...formData,
+                                            document_number: e.target.value,
+                                        })
+                                    }
+                                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent [&>option]:text-slate-900"
+                                >
+                                    <option value="">Select a document</option>
+                                    {documents.map((doc) => (
+                                        <option
+                                            key={doc.id}
+                                            value={doc.doc_number}
+                                        >
+                                            {doc.doc_number} ({doc.doc_type})
+                                        </option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <input
+                                    type="text"
+                                    value={formData.document_number || ""}
+                                    onChange={(e) =>
+                                        onFormChange({
+                                            ...formData,
+                                            document_number: e.target.value,
+                                        })
+                                    }
+                                    placeholder="e.g., DOC-001-2024"
+                                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                            )}
+                        </div>
+                    )}
 
                     {/* Description */}
                     <div>
@@ -150,7 +240,11 @@ function LedgerUploadModal({
                         </button>
                         <button
                             type="submit"
-                            disabled={!uploadFile || !formData.document_number}
+                            disabled={
+                                uploadFile
+                                    ? !formData.doc_type || !formData.issued_at
+                                    : !formData.document_number
+                            }
                             className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors"
                         >
                             Create Ledger

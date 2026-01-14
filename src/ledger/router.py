@@ -21,7 +21,7 @@ def create_ledger_entry(
     ledger_data: LedgerCreate,
     db: Session = Depends(get_session),
     user: Users = Depends(get_current_user),
-    role_check: None = Depends(role_required(["bank"])),
+    role_check: None = Depends(role_required(["bank", "corporate"])),
 ) -> LedgerResponse:
     """Create a new immutable ledger entry for a document.
 
