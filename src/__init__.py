@@ -57,6 +57,9 @@ from src.startup_checks import register_startup_checks
 from .Auth.router import authRouter
 from .trade_chain.router import trade_chain_router
 from .ledger.router import ledger_router
+from .trade_transactions.router import trade_transactions_router
+from .risk_scores.router import risk_scores_router
+from .audit_logs.router import audit_logs_router
 from .errors import register_error_handlers
 from .middleware import register_middleware
 
@@ -86,3 +89,12 @@ app.include_router(
     router=trade_chain_router, prefix="/api/trade_chain", tags=["Trade Chain"]
 )
 app.include_router(router=ledger_router, prefix="/api/ledger", tags=["Ledger"])
+app.include_router(
+    router=trade_transactions_router, prefix="/api/trade_transactions", tags=["Trade Transactions"]
+)
+app.include_router(
+    router=risk_scores_router, prefix="/api/risk_scores", tags=["Risk Scores"]
+)
+app.include_router(
+    router=audit_logs_router, prefix="/api/audit_logs", tags=["Audit Logs"]
+)

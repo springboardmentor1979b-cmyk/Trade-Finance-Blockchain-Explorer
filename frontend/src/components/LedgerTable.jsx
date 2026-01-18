@@ -14,19 +14,19 @@ import {
 
 // Action type icons mapping
 const actionIcons = {
-    create: "bg-green-100 text-green-800",
-    update: "bg-blue-100 text-blue-800",
-    delete: "bg-red-100 text-red-800",
-    verify: "bg-emerald-100 text-emerald-800",
-    dispute: "bg-yellow-100 text-yellow-800",
+    create: "text-slate-300",
+    update: "text-slate-300",
+    delete: "text-slate-300",
+    verify: "text-slate-300",
+    dispute: "text-slate-300",
 };
 
 // Status badge styles
 const statusStyles = {
-    pending: { bg: "bg-yellow-100", text: "text-yellow-800", icon: Clock },
-    verified: { bg: "bg-green-100", text: "text-green-800", icon: CheckCircle },
-    disputed: { bg: "bg-red-100", text: "text-red-800", icon: AlertCircle },
-    active: { bg: "bg-blue-100", text: "text-blue-800", icon: Activity },
+    pending: { bg: "bg-transparent", text: "text-slate-300", icon: Clock },
+    verified: { bg: "bg-transparent", text: "text-slate-300", icon: CheckCircle },
+    disputed: { bg: "bg-transparent", text: "text-slate-300", icon: AlertCircle },
+    active: { bg: "bg-transparent", text: "text-slate-300", icon: Activity },
 };
 
 /**
@@ -105,7 +105,16 @@ function LedgerTable({
                 ledgerDate >= filterStartDate && ledgerDate <= todayDate;
         }
 
-        return matchesSearch && matchesAction && matchesDateRange;
+        // Bank and Corporate users can only see their own ledgers
+        let matchesUserFilter = true;
+        if (userRole === "bank") {
+            matchesUserFilter = ledger.user_name === "Bank User";
+        } else if (userRole === "corporate") {
+            matchesUserFilter = ledger.user_name === "Corporate User";
+        }
+        // Admin and Auditor see all
+
+        return matchesSearch && matchesAction && matchesDateRange && matchesUserFilter;
     });
 
     // Pagination
@@ -113,6 +122,9 @@ function LedgerTable({
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
     const paginatedLedgers = filteredLedgers.slice(startIndex, endIndex);
+
+    // Check if user name column should be shown (hide for bank/corporate)
+    const showUserNameColumn = userRole === "admin" || userRole === "auditor";
 
     return (
         <div className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/10 overflow-hidden">
@@ -126,9 +138,11 @@ function LedgerTable({
                             <th className="text-left py-4 px-6 text-slate-400 font-medium text-sm">
                                 Action
                             </th>
-                            <th className="text-left py-4 px-6 text-slate-400 font-medium text-sm">
-                                User Name
-                            </th>
+                            {showUserNameColumn && (
+                                <th className="text-left py-4 px-6 text-slate-400 font-medium text-sm">
+                                    User Name
+                                </th>
+                            )}
                             <th className="text-left py-4 px-6 text-slate-400 font-medium text-sm">
                                 Created At
                             </th>
@@ -163,16 +177,18 @@ function LedgerTable({
                                         {ledger.action}
                                     </span>
                                 </td>
-                                <td className="py-4 px-6">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 bg-slate-600 rounded-full flex items-center justify-center">
-                                            <Users className="w-4 h-4 text-slate-300" />
+                                {showUserNameColumn && (
+                                    <td className="py-4 px-6">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 bg-slate-600 rounded-full flex items-center justify-center">
+                                                <Users className="w-4 h-4 text-slate-300" />
+                                            </div>
+                                            <span className="text-slate-300">
+                                                {ledger.user_name}
+                                            </span>
                                         </div>
-                                        <span className="text-slate-300">
-                                            {ledger.user_name}
-                                        </span>
-                                    </div>
-                                </td>
+                                    </td>
+                                )}
                                 <td className="py-4 px-6 text-slate-300">
                                     {new Date(
                                         ledger.created_at

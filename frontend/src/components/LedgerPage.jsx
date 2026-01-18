@@ -27,27 +27,58 @@ function LedgerPage({ onClose }) {
     const isPrivileged = role === "admin" || role === "auditor";
     const canCreate = role === "bank" || role === "corporate";
 
-    // Mock ledger data - would come from API in production (50 entries for 2 pages)
-    const [ledgers, setLedgers] = useState(
-        Array.from({ length: 50 }, (_, index) => ({
-            id: index + 1,
-            document_number: `DOC-${String(index + 1).padStart(3, "0")}-2024`,
-            action: ["issued", "amended", "shipped", "received", "paid", "cancelled", "verified"][
-                index % 7
-            ],
-            user_name: [
-                "John Smith",
-                "Admin User",
-                "Jane Doe",
-                "Mike Johnson",
-                "Sarah Wilson",
-            ][index % 5],
-            created_at: new Date(
-                Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000
-            ).toISOString(),
-            description: `Ledger entry #${index + 1}`,
-        }))
-    );
+    // Mock ledger data - 50 comprehensive samples for testing
+    const generateSampleLedgers = () => {
+        const actions = ["issued", "amended", "shipped", "received", "paid", "cancelled", "verified"];
+        const companies = [
+            "TechCorp Inc",
+            "Global Traders Ltd",
+            "Import Export Co",
+            "Finance Solutions",
+            "Trade Partners",
+            "International Commerce",
+            "Digital Supply Chain",
+            "Pacific Trading",
+            "Atlantic Logistics",
+            "European Exports"
+        ];
+        const adminUsers = [
+            "John Smith",
+            "Admin User",
+            "Jane Doe",
+            "Mike Johnson",
+            "Sarah Wilson"
+        ];
+        
+        const ledgers = [];
+        
+        // Generate 50 entries: ~17 bank/corporate, ~33 admin
+        for (let i = 0; i < 50; i++) {
+            const isBankEntry = i % 3 === 0; // Every 3rd entry is bank/corporate
+            const user = isBankEntry 
+                ? (i % 2 === 0 ? "Bank User" : "Corporate User")
+                : adminUsers[i % adminUsers.length];
+            
+            const action = actions[i % actions.length];
+            const company = companies[i % companies.length];
+            const docNum = String(i + 1).padStart(3, "0");
+            
+            ledgers.push({
+                id: i + 1,
+                document_number: `DOC-${docNum}-2024-${String((i % 10) + 1).padStart(2, "0")}`,
+                action: action,
+                user_name: user,
+                created_at: new Date(
+                    Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)
+                ).toISOString(),
+                description: `${company} - ${action.toUpperCase()} - Entry #${i + 1}`,
+            });
+        }
+        
+        return ledgers;
+    };
+
+    const [ledgers, setLedgers] = useState(generateSampleLedgers());
 
     // Search and filter states
     const [searchQuery, setSearchQuery] = useState("");
@@ -145,31 +176,22 @@ function LedgerPage({ onClose }) {
         setIsUploadModalOpen(true);
     };
 
-    const canViewLedgers = role === "admin" || role === "auditor";
+    // All roles can access ledger (admin, auditor, bank, corporate)
+    const canViewLedgers = ["admin", "auditor", "bank", "corporate"].includes(role);
 
-    if (!canViewLedgers) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-                <button
-                    onClick={onClose}
-                    className="mb-6 flex items-center gap-2 text-slate-300 hover:text-white transition-colors"
-                >
-                    <ArrowLeft className="w-5 h-5" />
-                    Back
-                </button>
+    // Filter ledgers based on user role for stats display
+    const getFilteredLedgersForStats = () => {
+        if (role === "admin" || role === "auditor") {
+            return ledgers; // See all 50
+        } else if (role === "bank") {
+            return ledgers.filter((l) => l.user_name === "Bank User");
+        } else if (role === "corporate") {
+            return ledgers.filter((l) => l.user_name === "Corporate User");
+        }
+        return [];
+    };
 
-                <div className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/10 p-12 text-center">
-                    <AlertCircle className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
-                    <h2 className="text-xl font-semibold text-white mb-2">
-                        Access Restricted
-                    </h2>
-                    <p className="text-slate-400">
-                        Only Admin and Auditor can view ledger entries.
-                    </p>
-                </div>
-            </div>
-        );
-    }
+    const visibleLedgers = getFilteredLedgersForStats();
 
     return (
         <div className="min-h-full p-6">
@@ -204,7 +226,7 @@ function LedgerPage({ onClose }) {
                                     Total Entries
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
-                                    {ledgers.length}
+                                    {visibleLedgers.length}
                                 </p>
                             </div>
                             <FileText className="w-12 h-12 text-blue-500/20 text-blue-400" />
@@ -219,7 +241,7 @@ function LedgerPage({ onClose }) {
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
                                     {
-                                        ledgers.filter(
+                                        visibleLedgers.filter(
                                             (l) =>
                                                 new Date(l.created_at) >
                                                 new Date(
@@ -241,7 +263,7 @@ function LedgerPage({ onClose }) {
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
                                     {
-                                        new Set(ledgers.map((l) => l.user_name))
+                                        new Set(visibleLedgers.map((l) => l.user_name))
                                             .size
                                     }
                                 </p>
