@@ -57,9 +57,13 @@ from src.startup_checks import register_startup_checks
 from .Auth.router import authRouter
 from .trade_chain.router import trade_chain_router
 from .ledger.router import ledger_router
+<<<<<<< HEAD
 from .trade_transactions.router import trade_transactions_router
 from .risk_scores.router import risk_scores_router
 from .audit_logs.router import audit_logs_router
+=======
+from .trade_transaction.router import transaction_router
+>>>>>>> e662a5b2cb84393a6f0842d0d1e1e094ed8ecf9e
 from .errors import register_error_handlers
 from .middleware import register_middleware
 
@@ -85,10 +89,9 @@ register_startup_checks(app, DATABASE_URL, REDIS_URL)
 
 # Register authentication router with API prefix and tags
 app.include_router(router=authRouter, prefix="/api/auth", tags=["Authentication"])
-app.include_router(
-    router=trade_chain_router, prefix="/api/trade_chain", tags=["Trade Chain"]
-)
+app.include_router(router=trade_chain_router, prefix="/api/trade_chain", tags=["Trade Chain"])
 app.include_router(router=ledger_router, prefix="/api/ledger", tags=["Ledger"])
+<<<<<<< HEAD
 app.include_router(
     router=trade_transactions_router, prefix="/api/trade_transactions", tags=["Trade Transactions"]
 )
@@ -98,3 +101,6 @@ app.include_router(
 app.include_router(
     router=audit_logs_router, prefix="/api/audit_logs", tags=["Audit Logs"]
 )
+=======
+app.include_router(router=transaction_router, prefix="/api/transaction", tags=["Transaction"])
+>>>>>>> e662a5b2cb84393a6f0842d0d1e1e094ed8ecf9e

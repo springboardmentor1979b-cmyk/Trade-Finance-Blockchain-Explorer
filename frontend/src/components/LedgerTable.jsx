@@ -73,6 +73,7 @@ function LedgerTable({
     currentPage = 1,
     onPageChange,
     userRole = "auditor",
+    totalItems,
 }) {
     const ITEMS_PER_PAGE = 25;
     const isPrivileged = userRole === "admin" || userRole === "auditor";
@@ -80,31 +81,38 @@ function LedgerTable({
     const canDelete = isPrivileged;
 
     // Filter ledgers
-    const filteredLedgers = ledgers.filter((ledger) => {
-        const matchesSearch =
-            (ledger.document_number || "")
-                .toLowerCase()
-                .includes(searchQuery.toLowerCase()) ||
-            (ledger.user_name || "")
-                .toLowerCase()
-                .includes(searchQuery.toLowerCase());
+    const filteredLedgers =
+        totalItems !== undefined
+            ? ledgers
+            : ledgers.filter((ledger) => {
+                  const matchesSearch =
+                      (ledger.document_number || "")
+                          .toLowerCase()
+                          .includes(searchQuery.toLowerCase()) ||
+                      (ledger.user_name || "")
+                          .toLowerCase()
+                          .includes(searchQuery.toLowerCase());
 
-        const matchesAction =
-            filterAction === "all" || ledger.action === filterAction;
+                  const matchesAction =
+                      filterAction === "all" || ledger.action === filterAction;
 
-        // Filter by date range (startDate to today)
-        const ledgerDate = new Date(ledger.created_at);
-        const filterStartDate = startDate ? new Date(startDate) : null;
-        const todayDate = new Date();
-        todayDate.setHours(23, 59, 59, 999);
+                  // Filter by date range (startDate to today)
+                  const ledgerDate = new Date(ledger.created_at);
+                  const filterStartDate = startDate
+                      ? new Date(startDate)
+                      : null;
+                  const todayDate = new Date();
+                  todayDate.setHours(23, 59, 59, 999);
 
-        let matchesDateRange = true;
-        if (filterStartDate) {
-            filterStartDate.setHours(0, 0, 0, 0);
-            matchesDateRange =
-                ledgerDate >= filterStartDate && ledgerDate <= todayDate;
-        }
+                  let matchesDateRange = true;
+                  if (filterStartDate) {
+                      filterStartDate.setHours(0, 0, 0, 0);
+                      matchesDateRange =
+                          ledgerDate >= filterStartDate &&
+                          ledgerDate <= todayDate;
+                  }
 
+<<<<<<< HEAD
         // Bank and Corporate users can only see their own ledgers
         let matchesUserFilter = true;
         if (userRole === "bank") {
@@ -116,12 +124,21 @@ function LedgerTable({
 
         return matchesSearch && matchesAction && matchesDateRange && matchesUserFilter;
     });
+=======
+                  return matchesSearch && matchesAction && matchesDateRange;
+              });
+>>>>>>> e662a5b2cb84393a6f0842d0d1e1e094ed8ecf9e
 
     // Pagination
-    const totalPages = Math.ceil(filteredLedgers.length / ITEMS_PER_PAGE);
+    const displayedTotalItems =
+        totalItems !== undefined ? totalItems : filteredLedgers.length;
+    const totalPages = Math.ceil(displayedTotalItems / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
-    const paginatedLedgers = filteredLedgers.slice(startIndex, endIndex);
+    const paginatedLedgers =
+        totalItems !== undefined
+            ? ledgers
+            : filteredLedgers.slice(startIndex, endIndex);
 
     // Check if user name column should be shown (hide for bank/corporate)
     const showUserNameColumn = userRole === "admin" || userRole === "auditor";
@@ -208,9 +225,7 @@ function LedgerTable({
                                         </button>
                                         {canEdit && (
                                             <button
-                                                onClick={() =>
-                                                    onEdit(ledger)
-                                                }
+                                                onClick={() => onEdit(ledger)}
                                                 className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
                                                 title="Edit"
                                             >
@@ -238,7 +253,9 @@ function LedgerTable({
                 {filteredLedgers.length === 0 && (
                     <div className="text-center py-12">
                         <FileText className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-                        <p className="text-slate-400">No ledger entries found</p>
+                        <p className="text-slate-400">
+                            No ledger entries found
+                        </p>
                         <p className="text-slate-500 text-sm mt-1">
                             Try adjusting your search or filters
                         </p>
@@ -266,21 +283,22 @@ function LedgerTable({
 
                         {/* Page Numbers */}
                         <div className="flex gap-1">
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                                (page) => (
-                                    <button
-                                        key={page}
-                                        onClick={() => onPageChange(page)}
-                                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                            currentPage === page
-                                                ? "bg-blue-600 text-white"
-                                                : "bg-white/10 hover:bg-white/20 text-white"
-                                        }`}
-                                    >
-                                        {page}
-                                    </button>
-                                )
-                            )}
+                            {Array.from(
+                                { length: totalPages },
+                                (_, i) => i + 1
+                            ).map((page) => (
+                                <button
+                                    key={page}
+                                    onClick={() => onPageChange(page)}
+                                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                        currentPage === page
+                                            ? "bg-blue-600 text-white"
+                                            : "bg-white/10 hover:bg-white/20 text-white"
+                                    }`}
+                                >
+                                    {page}
+                                </button>
+                            ))}
                         </div>
 
                         <button
