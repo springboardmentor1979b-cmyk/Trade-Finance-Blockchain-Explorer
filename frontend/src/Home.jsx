@@ -9,6 +9,7 @@ import {
     CreditCard,
     Ship,
     BookOpen,
+    AlertCircle,
 } from "lucide-react";
 import StatsCard from "./components/StatsCard";
 import DocumentTable from "./components/DocumentTable";
@@ -17,6 +18,9 @@ import UploadModal from "./components/UploadModal";
 import ViewModal from "./components/ViewModal";
 import EditModal from "./components/EditModal";
 import LedgerPage from "./components/LedgerPage";
+import TradeTransactionsPage from "./components/TradeTransactionsPage";
+import RiskScoresPage from "./components/RiskScoresPage";
+import AuditLogsPage from "./components/AuditLogsPage";
 import { useDocuments, useUploadForm } from "./hooks/useDocuments";
 import { useAuth } from "./context/AuthContext";
 import api from "./api/axios";
@@ -173,6 +177,12 @@ function Home() {
         <div className="min-h-full p-6">
             {activeTab === "ledger" ? (
                 <LedgerPage onClose={() => setActiveTab("documents")} />
+            ) : activeTab === "tradeTransactions" ? (
+                <TradeTransactionsPage onClose={() => setActiveTab("documents")} />
+            ) : activeTab === "riskScores" ? (
+                <RiskScoresPage onClose={() => setActiveTab("documents")} />
+            ) : activeTab === "auditLogs" ? (
+                <AuditLogsPage onClose={() => setActiveTab("documents")} />
             ) : (
                 <>
                     <div className="max-w-7xl mx-auto space-y-6">
@@ -201,7 +211,7 @@ function Home() {
                                 <FileText className="w-5 h-5" />
                                 Documents
                             </button>
-                            {(role === "admin" || role === "auditor") && (
+                            {(role === "admin" || role === "auditor" || role === "bank" || role === "corporate") && (
                                 <button
                                     onClick={() => setActiveTab("ledger")}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -212,6 +222,45 @@ function Home() {
                                 >
                                     <BookOpen className="w-5 h-5" />
                                     Ledger
+                                </button>
+                            )}
+                            {(role === "admin" || role === "auditor" || role === "bank" || role === "corporate") && (
+                                <button
+                                    onClick={() => setActiveTab("tradeTransactions")}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                                        activeTab === "tradeTransactions"
+                                            ? "bg-blue-600 text-white"
+                                            : "text-slate-400 hover:text-white hover:bg-white/10"
+                                    }`}
+                                >
+                                    <TrendingUp className="w-5 h-5" />
+                                    Trade Transactions
+                                </button>
+                            )}
+                            {(role === "admin" || role === "auditor" || role === "bank" || role === "corporate") && (
+                                <button
+                                    onClick={() => setActiveTab("riskScores")}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                                        activeTab === "riskScores"
+                                            ? "bg-blue-600 text-white"
+                                            : "text-slate-400 hover:text-white hover:bg-white/10"
+                                    }`}
+                                >
+                                    <AlertCircle className="w-5 h-5" />
+                                    Risk Scores
+                                </button>
+                            )}
+                            {(role === "admin" || role === "auditor" || role === "bank" || role === "corporate") && (
+                                <button
+                                    onClick={() => setActiveTab("auditLogs")}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                                        activeTab === "auditLogs"
+                                            ? "bg-blue-600 text-white"
+                                            : "text-slate-400 hover:text-white hover:bg-white/10"
+                                    }`}
+                                >
+                                    <Activity className="w-5 h-5" />
+                                    Audit Logs
                                 </button>
                             )}
                         </div>
