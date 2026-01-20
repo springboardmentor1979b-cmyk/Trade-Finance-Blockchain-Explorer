@@ -1,10 +1,5 @@
 import React, { useState } from "react";
-import {
-    ArrowLeft,
-    TrendingUp,
-    AlertCircle,
-    CheckCircle,
-} from "lucide-react";
+import { ArrowLeft, TrendingUp, AlertCircle, CheckCircle } from "lucide-react";
 import RiskScoresTable from "./RiskScoresTable";
 import RiskScoresActionBar from "./RiskScoresActionBar";
 import RiskScoresUploadModal from "./RiskScoresUploadModal";
@@ -19,7 +14,12 @@ function RiskScoresPage({ onClose }) {
     // Generate 50 sample risk scores
     const generateSampleRiskScores = () => {
         const users = ["Bank User", "Corporate User"];
-        const categories = ["Credit Risk", "Operational Risk", "Market Risk", "Compliance Risk"];
+        const categories = [
+            "Credit Risk",
+            "Operational Risk",
+            "Market Risk",
+            "Compliance Risk",
+        ];
 
         return Array.from({ length: 50 }, (_, i) => ({
             id: i + 1,
@@ -29,7 +29,8 @@ function RiskScoresPage({ onClose }) {
             category: categories[i % categories.length],
             rationale: `Risk assessment for ${users[i % 2]}`,
             last_updated: new Date(
-                Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)
+                Date.now() -
+                    Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)
             ).toISOString(),
         }));
     };
@@ -54,7 +55,8 @@ function RiskScoresPage({ onClose }) {
     const canCreate = role === "auditor";
     const canEdit = role === "auditor";
     const canDelete = role === "auditor";
-    const canView = role === "auditor" || role === "bank" || role === "corporate";
+    const canView =
+        role === "auditor" || role === "bank" || role === "corporate";
 
     // Filter based on role
     const getVisibleRiskScores = () => {
@@ -70,7 +72,7 @@ function RiskScoresPage({ onClose }) {
 
     if (!canView) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+            <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
                 <button
                     onClick={onClose}
                     className="mb-6 flex items-center gap-2 text-slate-300 hover:text-white transition-colors"
@@ -84,7 +86,8 @@ function RiskScoresPage({ onClose }) {
                         Access Restricted
                     </h2>
                     <p className="text-slate-400">
-                        Only Auditor, Bank, and Corporate users can view risk scores.
+                        Only Auditor, Bank, and Corporate users can view risk
+                        scores.
                     </p>
                 </div>
             </div>
@@ -106,7 +109,8 @@ function RiskScoresPage({ onClose }) {
             id: riskScores.length + 1,
             user_id: Math.random() * 10,
             user_name: uploadForm.user_name,
-            user_type: uploadForm.user_name === "Bank User" ? "Bank" : "Corporate",
+            user_type:
+                uploadForm.user_name === "Bank User" ? "Bank" : "Corporate",
             score: parseInt(uploadForm.score),
             category: "Credit Risk",
             rationale: uploadForm.rationale,
@@ -131,11 +135,11 @@ function RiskScoresPage({ onClose }) {
         const updatedRiskScores = riskScores.map((r) =>
             r.id === selectedRiskScore.id
                 ? {
-                    ...r,
-                    score: parseInt(editForm.score),
-                    rationale: editForm.rationale,
-                    last_updated: new Date().toISOString(),
-                }
+                      ...r,
+                      score: parseInt(editForm.score),
+                      rationale: editForm.rationale,
+                      last_updated: new Date().toISOString(),
+                  }
                 : r
         );
 
@@ -147,7 +151,9 @@ function RiskScoresPage({ onClose }) {
     };
 
     const handleDelete = (riskScoreId) => {
-        if (window.confirm("Are you sure you want to delete this risk score?")) {
+        if (
+            window.confirm("Are you sure you want to delete this risk score?")
+        ) {
             setRiskScores(riskScores.filter((r) => r.id !== riskScoreId));
             toast.success("Risk score deleted successfully");
         }
@@ -160,7 +166,10 @@ function RiskScoresPage({ onClose }) {
 
     const handleEdit = (riskScore) => {
         setSelectedRiskScore(riskScore);
-        setEditForm({ score: riskScore.score.toString(), rationale: riskScore.rationale });
+        setEditForm({
+            score: riskScore.score.toString(),
+            rationale: riskScore.rationale,
+        });
         setIsEditModalOpen(true);
     };
 
@@ -205,7 +214,7 @@ function RiskScoresPage({ onClose }) {
                                     {visibleRiskScores.length}
                                 </p>
                             </div>
-                            <TrendingUp className="w-12 h-12 text-blue-500/20 text-blue-400" />
+                            <TrendingUp className="w-12 h-12 text-blue-500/20" />
                         </div>
                     </div>
 
@@ -216,10 +225,14 @@ function RiskScoresPage({ onClose }) {
                                     High Risk
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
-                                    {visibleRiskScores.filter((r) => r.score > 70).length}
+                                    {
+                                        visibleRiskScores.filter(
+                                            (r) => r.score > 70
+                                        ).length
+                                    }
                                 </p>
                             </div>
-                            <AlertCircle className="w-12 h-12 text-red-500/20 text-red-400" />
+                            <AlertCircle className="w-12 h-12 text-red-500/20" />
                         </div>
                     </div>
 
@@ -231,12 +244,14 @@ function RiskScoresPage({ onClose }) {
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
                                     {(
-                                        visibleRiskScores.reduce((sum, r) => sum + r.score, 0) /
-                                        visibleRiskScores.length
+                                        visibleRiskScores.reduce(
+                                            (sum, r) => sum + r.score,
+                                            0
+                                        ) / visibleRiskScores.length
                                     ).toFixed(1)}
                                 </p>
                             </div>
-                            <CheckCircle className="w-12 h-12 text-green-500/20 text-green-400" />
+                            <CheckCircle className="w-12 h-12 text-green-500/20" />
                         </div>
                     </div>
                 </div>

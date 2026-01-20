@@ -1,10 +1,5 @@
 import React, { useState } from "react";
-import {
-    ArrowLeft,
-    Activity,
-    AlertCircle,
-    CheckCircle,
-} from "lucide-react";
+import { ArrowLeft, Activity, AlertCircle, CheckCircle } from "lucide-react";
 import AuditLogsTable from "./AuditLogsTable";
 import AuditLogsActionBar from "./AuditLogsActionBar";
 import AuditLogsUploadModal from "./AuditLogsUploadModal";
@@ -19,8 +14,21 @@ function AuditLogsPage({ onClose }) {
     // Generate 50 sample audit logs
     const generateSampleAuditLogs = () => {
         const admins = ["Admin User", "John Smith", "Jane Doe"];
-        const actions = ["CREATE", "UPDATE", "DELETE", "VIEW", "EXPORT", "IMPORT"];
-        const targets = ["Document", "Ledger", "Transaction", "User", "Risk Score"];
+        const actions = [
+            "CREATE",
+            "UPDATE",
+            "DELETE",
+            "VIEW",
+            "EXPORT",
+            "IMPORT",
+        ];
+        const targets = [
+            "Document",
+            "Ledger",
+            "Transaction",
+            "User",
+            "Risk Score",
+        ];
 
         return Array.from({ length: 50 }, (_, i) => ({
             id: i + 1,
@@ -31,7 +39,8 @@ function AuditLogsPage({ onClose }) {
             target_id: Math.floor(Math.random() * 1000) + 1,
             description: `${actions[i % actions.length]} operation on ${targets[i % targets.length]}`,
             timestamp: new Date(
-                Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)
+                Date.now() -
+                    Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)
             ).toISOString(),
         }));
     };
@@ -57,7 +66,8 @@ function AuditLogsPage({ onClose }) {
     const canCreate = role === "auditor";
     const canEdit = role === "auditor";
     const canDelete = role === "auditor";
-    const canView = role === "auditor" || role === "bank" || role === "corporate";
+    const canView =
+        role === "auditor" || role === "bank" || role === "corporate";
 
     // For bank and corporate users, they see all audit logs (they don't filter by admin)
     // But we could add logic here if needed
@@ -67,7 +77,7 @@ function AuditLogsPage({ onClose }) {
 
     if (!canView) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+            <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
                 <button
                     onClick={onClose}
                     className="mb-6 flex items-center gap-2 text-slate-300 hover:text-white transition-colors"
@@ -81,7 +91,8 @@ function AuditLogsPage({ onClose }) {
                         Access Restricted
                     </h2>
                     <p className="text-slate-400">
-                        Only Auditor, Bank, and Corporate users can view audit logs.
+                        Only Auditor, Bank, and Corporate users can view audit
+                        logs.
                     </p>
                 </div>
             </div>
@@ -117,7 +128,12 @@ function AuditLogsPage({ onClose }) {
         setAuditLogs([newAuditLog, ...auditLogs]);
         toast.success("Audit log created successfully");
         setIsUploadModalOpen(false);
-        setUploadForm({ admin_name: "", action: "", target_type: "", target_id: "" });
+        setUploadForm({
+            admin_name: "",
+            action: "",
+            target_type: "",
+            target_id: "",
+        });
     };
 
     const handleEditSubmit = (e) => {
@@ -132,10 +148,10 @@ function AuditLogsPage({ onClose }) {
         const updatedAuditLogs = auditLogs.map((a) =>
             a.id === selectedAuditLog.id
                 ? {
-                    ...a,
-                    action: editForm.action,
-                    target_type: editForm.target_type,
-                }
+                      ...a,
+                      action: editForm.action,
+                      target_type: editForm.target_type,
+                  }
                 : a
         );
 
@@ -160,12 +176,20 @@ function AuditLogsPage({ onClose }) {
 
     const handleEdit = (auditLog) => {
         setSelectedAuditLog(auditLog);
-        setEditForm({ action: auditLog.action, target_type: auditLog.target_type });
+        setEditForm({
+            action: auditLog.action,
+            target_type: auditLog.target_type,
+        });
         setIsEditModalOpen(true);
     };
 
     const handleCreateClick = () => {
-        setUploadForm({ admin_name: "", action: "", target_type: "", target_id: "" });
+        setUploadForm({
+            admin_name: "",
+            action: "",
+            target_type: "",
+            target_id: "",
+        });
         setIsUploadModalOpen(true);
     };
 
@@ -205,7 +229,7 @@ function AuditLogsPage({ onClose }) {
                                     {visibleAuditLogs.length}
                                 </p>
                             </div>
-                            <Activity className="w-12 h-12 text-blue-500/20 text-blue-400" />
+                            <Activity className="w-12 h-12 text-blue-500/20" />
                         </div>
                     </div>
 
@@ -216,12 +240,16 @@ function AuditLogsPage({ onClose }) {
                                     Today's Activities
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
-                                    {visibleAuditLogs.filter((a) =>
-                                        new Date(a.timestamp) > new Date(Date.now() - 86400000)
-                                    ).length}
+                                    {
+                                        visibleAuditLogs.filter(
+                                            (a) =>
+                                                new Date(a.timestamp) >
+                                                new Date(Date.now() - 86400000)
+                                        ).length
+                                    }
                                 </p>
                             </div>
-                            <CheckCircle className="w-12 h-12 text-green-500/20 text-green-400" />
+                            <CheckCircle className="w-12 h-12 text-green-500/20" />
                         </div>
                     </div>
 
@@ -232,10 +260,16 @@ function AuditLogsPage({ onClose }) {
                                     Admins Active
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
-                                    {new Set(visibleAuditLogs.map((a) => a.admin_name)).size}
+                                    {
+                                        new Set(
+                                            visibleAuditLogs.map(
+                                                (a) => a.admin_name
+                                            )
+                                        ).size
+                                    }
                                 </p>
                             </div>
-                            <AlertCircle className="w-12 h-12 text-orange-500/20 text-orange-400" />
+                            <AlertCircle className="w-12 h-12 text-orange-500/20" />
                         </div>
                     </div>
                 </div>
@@ -278,7 +312,12 @@ function AuditLogsPage({ onClose }) {
                 onFormChange={setUploadForm}
                 onClose={() => {
                     setIsUploadModalOpen(false);
-                    setUploadForm({ admin_name: "", action: "", target_type: "", target_id: "" });
+                    setUploadForm({
+                        admin_name: "",
+                        action: "",
+                        target_type: "",
+                        target_id: "",
+                    });
                 }}
                 onSubmit={handleUploadSubmit}
             />

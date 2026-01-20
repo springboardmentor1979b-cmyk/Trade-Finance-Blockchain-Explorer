@@ -1,10 +1,5 @@
 import React, { useState } from "react";
-import {
-    ArrowLeft,
-    TrendingUp,
-    AlertCircle,
-    CheckCircle,
-} from "lucide-react";
+import { ArrowLeft, TrendingUp, AlertCircle, CheckCircle } from "lucide-react";
 import TradeTransactionsTable from "./TradeTransactionsTable";
 import TradeTransactionsActionBar from "./TradeTransactionsActionBar";
 import TradeTransactionsUploadModal from "./TradeTransactionsUploadModal";
@@ -32,13 +27,18 @@ function TradeTransactionsPage({ onClose }) {
             currency: currencies[i % currencies.length],
             status: statuses[i % statuses.length],
             created_at: new Date(
-                Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)
+                Date.now() -
+                    Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)
             ).toISOString(),
-            updated_at: new Date(Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)).toISOString(),
+            updated_at: new Date(
+                Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)
+            ).toISOString(),
         }));
     };
 
-    const [transactions, setTransactions] = useState(generateSampleTransactions());
+    const [transactions, setTransactions] = useState(
+        generateSampleTransactions()
+    );
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState("all");
     const [filterBuyer, setFilterBuyer] = useState("all");
@@ -66,9 +66,17 @@ function TradeTransactionsPage({ onClose }) {
         if (role === "admin" || role === "auditor") {
             return transactions;
         } else if (role === "bank") {
-            return transactions.filter((t) => t.buyer_name === "Bank User" || t.seller_name === "Bank User");
+            return transactions.filter(
+                (t) =>
+                    t.buyer_name === "Bank User" ||
+                    t.seller_name === "Bank User"
+            );
         } else if (role === "corporate") {
-            return transactions.filter((t) => t.buyer_name === "Corporate User" || t.seller_name === "Corporate User");
+            return transactions.filter(
+                (t) =>
+                    t.buyer_name === "Corporate User" ||
+                    t.seller_name === "Corporate User"
+            );
         }
         return transactions;
     };
@@ -104,7 +112,12 @@ function TradeTransactionsPage({ onClose }) {
         setTransactions([newTransaction, ...transactions]);
         toast.success("Trade transaction created successfully");
         setIsUploadModalOpen(false);
-        setUploadForm({ buyer_name: "", seller_name: "", amount: "", currency: "USD" });
+        setUploadForm({
+            buyer_name: "",
+            seller_name: "",
+            amount: "",
+            currency: "USD",
+        });
     };
 
     const handleEditSubmit = (e) => {
@@ -118,7 +131,11 @@ function TradeTransactionsPage({ onClose }) {
 
         const updatedTransactions = transactions.map((t) =>
             t.id === selectedTransaction.id
-                ? { ...t, status: editForm.status, updated_at: new Date().toISOString() }
+                ? {
+                      ...t,
+                      status: editForm.status,
+                      updated_at: new Date().toISOString(),
+                  }
                 : t
         );
 
@@ -130,7 +147,11 @@ function TradeTransactionsPage({ onClose }) {
     };
 
     const handleDelete = (transactionId) => {
-        if (window.confirm("Are you sure you want to delete this trade transaction?")) {
+        if (
+            window.confirm(
+                "Are you sure you want to delete this trade transaction?"
+            )
+        ) {
             setTransactions(transactions.filter((t) => t.id !== transactionId));
             toast.success("Trade transaction deleted successfully");
         }
@@ -148,7 +169,12 @@ function TradeTransactionsPage({ onClose }) {
     };
 
     const handleCreateClick = () => {
-        setUploadForm({ buyer_name: "", seller_name: "", amount: "", currency: "USD" });
+        setUploadForm({
+            buyer_name: "",
+            seller_name: "",
+            amount: "",
+            currency: "USD",
+        });
         setIsUploadModalOpen(true);
     };
 
@@ -188,7 +214,7 @@ function TradeTransactionsPage({ onClose }) {
                                     {visibleTransactions.length}
                                 </p>
                             </div>
-                            <TrendingUp className="w-12 h-12 text-blue-500/20 text-blue-400" />
+                            <TrendingUp className="w-12 h-12 text-blue-500/20" />
                         </div>
                     </div>
 
@@ -199,10 +225,14 @@ function TradeTransactionsPage({ onClose }) {
                                     Completed
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
-                                    {visibleTransactions.filter((t) => t.status === "completed").length}
+                                    {
+                                        visibleTransactions.filter(
+                                            (t) => t.status === "completed"
+                                        ).length
+                                    }
                                 </p>
                             </div>
-                            <CheckCircle className="w-12 h-12 text-green-500/20 text-green-400" />
+                            <CheckCircle className="w-12 h-12 text-green-500/20" />
                         </div>
                     </div>
 
@@ -213,10 +243,14 @@ function TradeTransactionsPage({ onClose }) {
                                     Disputed
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
-                                    {visibleTransactions.filter((t) => t.status === "disputed").length}
+                                    {
+                                        visibleTransactions.filter(
+                                            (t) => t.status === "disputed"
+                                        ).length
+                                    }
                                 </p>
                             </div>
-                            <AlertCircle className="w-12 h-12 text-red-500/20 text-red-400" />
+                            <AlertCircle className="w-12 h-12 text-red-500/20" />
                         </div>
                     </div>
                 </div>
@@ -262,7 +296,12 @@ function TradeTransactionsPage({ onClose }) {
                 onFormChange={setUploadForm}
                 onClose={() => {
                     setIsUploadModalOpen(false);
-                    setUploadForm({ buyer_name: "", seller_name: "", amount: "", currency: "USD" });
+                    setUploadForm({
+                        buyer_name: "",
+                        seller_name: "",
+                        amount: "",
+                        currency: "USD",
+                    });
                 }}
                 onSubmit={handleUploadSubmit}
             />

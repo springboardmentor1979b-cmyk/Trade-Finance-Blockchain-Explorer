@@ -112,22 +112,8 @@ function LedgerTable({
                           ledgerDate <= todayDate;
                   }
 
-<<<<<<< HEAD
-        // Bank and Corporate users can only see their own ledgers
-        let matchesUserFilter = true;
-        if (userRole === "bank") {
-            matchesUserFilter = ledger.user_name === "Bank User";
-        } else if (userRole === "corporate") {
-            matchesUserFilter = ledger.user_name === "Corporate User";
-        }
-        // Admin and Auditor see all
-
-        return matchesSearch && matchesAction && matchesDateRange && matchesUserFilter;
-    });
-=======
                   return matchesSearch && matchesAction && matchesDateRange;
               });
->>>>>>> e662a5b2cb84393a6f0842d0d1e1e094ed8ecf9e
 
     // Pagination
     const displayedTotalItems =
