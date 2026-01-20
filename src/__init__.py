@@ -83,6 +83,10 @@ register_startup_checks(app, DATABASE_URL, REDIS_URL)
 
 # Register authentication router with API prefix and tags
 app.include_router(router=authRouter, prefix="/api/auth", tags=["Authentication"])
-app.include_router(router=trade_chain_router, prefix="/api/trade_chain", tags=["Trade Chain"])
-app.include_router(router=ledger_router, prefix="/api/ledger", tags=["Ledger"])
-app.include_router(router=transaction_router, prefix="/api/transaction", tags=["Transaction"])
+app.include_router(
+    router=trade_chain_router, prefix="/api/trade_chain", tags=["Trade Chain Documents"]
+)
+app.include_router(router=ledger_router, prefix="/api/ledger", tags=["Ledger Entries"])
+app.include_router(
+    router=transaction_router, prefix="/api/transaction", tags=["Transactions Records"]
+)
