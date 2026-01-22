@@ -132,7 +132,7 @@ function AuditLogsTable({
                     </tbody>
                 </table>
 
-                {filteredAuditLogs.length === 0 && (
+                {auditLogs.length === 0 && (
                     <div className="text-center py-12">
                         <FileText className="w-12 h-12 text-slate-500 mx-auto mb-4" />
                         <p className="text-slate-400">No audit logs found</p>
@@ -145,9 +145,9 @@ function AuditLogsTable({
                 <div className="flex items-center justify-between p-4 border-t border-white/10">
                     <p className="text-sm text-slate-400">
                         Showing {startIndex + 1} to{" "}
-                        {Math.min(endIndex, filteredAuditLogs.length)} of{" "}
-                        {filteredAuditLogs.length} entries | Page {currentPage}{" "}
-                        of {totalPages}
+                        {Math.min(endIndex, auditLogs.length)} of{" "}
+                        {auditLogs.length} entries | Page {currentPage} of{" "}
+                        {totalPages}
                     </p>
                     <div className="flex gap-2">
                         <button

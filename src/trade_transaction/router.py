@@ -9,6 +9,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Form, Query, status
 from sqlmodel import Session, select
 
+from src.audit_logs.service import log_action
 from src.Auth.dependency import get_current_user, role_required
 from src.db.database import get_session
 from src.db.enums import TransactionStatusChoices
@@ -253,18 +254,24 @@ def edit_transaction_status(
     transaction_id: int,
     status: TransactionStatusChoices = Form(...),
     db: Session = Depends(get_session),
+    user: Users = Depends(get_current_user),
     admin_check: bool = Depends(role_required(["admin"])),
 ):
     """Admin-only: Updates the status of a transaction. Other fields cannot be changed."""
-    return TradeTransactionService.update_status(db, transaction_id, status)
+    result = TradeTransactionService.update_status(db, transaction_id, status)
+    # Log the action
+    log_action(db, user.id, "UPDATE", "transaction", str(transaction_id))  # type: ignore
+    db.commit()
+    return result
 
 
 @transaction_router.delete("/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_transaction(
     transaction_id: int,
     db: Session = Depends(get_session),
+    user: Users = Depends(get_current_user),
     admin_check: bool = Depends(role_required(["admin"])),
 ):
     """Admin-only: Deletes a transaction. Users must re-add to change immutable details."""
+    log_action(db, user.id, "DELETE", "transaction", str(transaction_id))  # type: ignore
     TradeTransactionService.delete_transaction(db, transaction_id)
-    return None

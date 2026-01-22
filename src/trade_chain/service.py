@@ -21,6 +21,7 @@ Typical usage:
 
 import shutil
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import List
 
@@ -28,17 +29,16 @@ from fastapi import UploadFile
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
-from datetime import datetime
 
 from src.db.enums import DocumentTypeChoices
 from src.db.models import Documents, Users
 from src.errors import (
-    DupliacateDocument,
+    DocumentDeleteError,
     DocumentNotFound,
     DocumentNotUploaded,
-    InvalidDocumentFormat,
     DocumentUploadError,
-    DocumentDeleteError,
+    DupliacateDocument,
+    InvalidDocumentFormat,
 )
 
 from .schemas import DocumentBase, UserDocumentsResponse
@@ -355,12 +355,13 @@ class TradeChainService:
             If the database deletion fails, the transaction is rolled back,
             but the file will already be deleted from disk.
         """
-        try:
-            statement = select(Documents).where(Documents.id == document_id)
-            document = db.exec(statement).first()
-            if not document:
-                raise DocumentNotFound()
+        # First check if document exists (before any session modifications)
+        statement = select(Documents).where(Documents.id == document_id)
+        document = db.exec(statement).first()
+        if not document:
+            raise DocumentNotFound()
 
+        try:
             file_path = Path(document.file_url)
             if file_path.exists():
                 file_path.unlink(missing_ok=True)

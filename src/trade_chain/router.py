@@ -1,12 +1,16 @@
-from fastapi import APIRouter, File, UploadFile, Depends, Form, status
-from sqlmodel import Session
-from src.db.database import get_session
-from .service import TradeChainService
-from src.Auth.dependency import get_current_user, role_required
-from src.db.models import Users, Documents
-from src.db.enums import DocumentTypeChoices
-from .schemas import UserDocumentsResponse
 from datetime import datetime
+
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from sqlmodel import Session
+
+from src.audit_logs.service import log_action
+from src.Auth.dependency import get_current_user, role_required
+from src.db.database import get_session
+from src.db.enums import DocumentTypeChoices
+from src.db.models import Documents, Users
+
+from .schemas import UserDocumentsResponse
+from .service import TradeChainService
 
 trade_chain_router = APIRouter()
 
@@ -72,12 +76,16 @@ def update_document(
     user: Users = Depends(get_current_user),
     role_check: None = Depends(role_required(["admin", "auditor"])),
 ) -> Documents:
-    return TradeChainService.edit_document(
+    result = TradeChainService.edit_document(
         document_id=document_id,
         file=file,
         doc_type=doc_type,
         db=db,
     )
+    # Log the action (after edit_document commits, we add new entry and commit again)
+    log_action(db, user.id, "UPDATE", "document", str(document_id))  # type: ignore
+    db.commit()
+    return result
 
 
 """ADMIN AND AUDITOR CAN DELETE ANY USER'S DOCUMENT"""
@@ -92,10 +100,15 @@ def delete_document(
     user: Users = Depends(get_current_user),
     role_check: None = Depends(role_required(["admin", "auditor"])),
 ) -> None:
+    # Delete the document (service handles commit)
+    # Audit log is added before commit inside the service transaction
     TradeChainService.delete_document(
         document_id=document_id,
         db=db,
     )
+    # Log the action after successful deletion
+    log_action(db, user.id, "DELETE", "document", str(document_id))  # type: ignore
+    db.commit()
 
 
 """

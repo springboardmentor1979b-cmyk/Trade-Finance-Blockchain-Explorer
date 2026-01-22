@@ -7,6 +7,34 @@ from src.db.models import AuditLogs, Users
 from .schemas import AuditLogCreate, AuditLogResponse
 
 
+def log_action(
+    db: Session,
+    admin_id: int,
+    action: str,
+    target_type: str,
+    target_id: str,
+) -> None:
+    """
+    Utility function to create an audit log entry.
+    Used internally by other services to log admin/auditor actions.
+
+    Args:
+        db: Database session
+        admin_id: ID of the user performing the action
+        action: Action being performed (CREATE, UPDATE, DELETE, VIEW, etc.)
+        target_type: Type of entity (risk_score, ledger, transaction, user, etc.)
+        target_id: ID of the target entity
+    """
+    audit_log = AuditLogs(
+        admin_id=admin_id,
+        action=action,
+        target_type=target_type,
+        target_id=str(target_id),
+    )
+    db.add(audit_log)
+    # Don't commit here - let the calling function handle the transaction
+
+
 class AuditLogService:
     @staticmethod
     def create_audit_log(

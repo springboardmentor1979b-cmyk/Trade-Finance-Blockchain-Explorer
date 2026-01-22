@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlmodel import Session
 
+from src.audit_logs.service import log_action
 from src.Auth.dependency import get_current_user, role_required
 from src.db.database import get_session
 from src.db.models import Users
@@ -17,9 +18,14 @@ risk_scores_router = APIRouter()
 def create_risk_score(
     risk_data: RiskScoreCreate,
     db: Session = Depends(get_session),
+    user: Users = Depends(get_current_user),
     role_check: None = Depends(role_required(["admin", "auditor"])),
 ) -> RiskScoreResponse:
-    return RiskScoreService.create_risk_score(risk_data, db)
+    result = RiskScoreService.create_risk_score(risk_data, db)
+    # Log the action
+    log_action(db, user.id, "CREATE", "risk_score", str(result.id))  # type: ignore
+    db.commit()
+    return result
 
 
 @risk_scores_router.get("/my", response_model=list[RiskScoreResponse])
@@ -51,15 +57,24 @@ def update_risk_score(
     risk_id: int,
     update_data: RiskScoreUpdate,
     db: Session = Depends(get_session),
+    user: Users = Depends(get_current_user),
     role_check: None = Depends(role_required(["admin", "auditor"])),
 ) -> RiskScoreResponse:
-    return RiskScoreService.update_risk_score(risk_id, update_data, db)
+    result = RiskScoreService.update_risk_score(risk_id, update_data, db)
+    # Log the action
+    log_action(db, user.id, "UPDATE", "risk_score", str(risk_id))  # type: ignore
+    db.commit()
+    return result
 
 
 @risk_scores_router.delete("/{risk_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_risk_score(
     risk_id: int,
     db: Session = Depends(get_session),
+    user: Users = Depends(get_current_user),
     role_check: None = Depends(role_required(["admin", "auditor"])),
 ) -> None:
     RiskScoreService.delete_risk_score(risk_id, db)
+    # Log the action
+    log_action(db, user.id, "DELETE", "risk_score", str(risk_id))  # type: ignore
+    db.commit()

@@ -1,15 +1,17 @@
-from fastapi import APIRouter, Depends, status, Form, Query
-from src.db.database import get_session
-from src.Auth.dependency import role_required, get_current_user
-from sqlmodel import Session
-from .service import LedgerService
-from .schemas import PaginatedLedgerResponse
-from src.errors import DocumentNotFound
-from src.db.models import Users
-from .schemas import LedgerCreate, LedgerResponse
-
-from src.db.enums import LedgerActionChoices
 from datetime import date
+
+from fastapi import APIRouter, Depends, Form, Query, status
+from sqlmodel import Session
+
+from src.audit_logs.service import log_action
+from src.Auth.dependency import get_current_user, role_required
+from src.db.database import get_session
+from src.db.enums import LedgerActionChoices
+from src.db.models import Users
+from src.errors import DocumentNotFound
+
+from .schemas import LedgerCreate, LedgerResponse, PaginatedLedgerResponse
+from .service import LedgerService
 
 ledger_router = APIRouter()
 
@@ -82,6 +84,7 @@ def get_user_ledger_records(
 def delete_record(
     record_id: int,
     db: Session = Depends(get_session),
+    user: Users = Depends(get_current_user),
     role_check: None = Depends(role_required(["admin", "auditor"])),
 ):
     """
@@ -90,6 +93,9 @@ def delete_record(
     res = LedgerService.delete_ledger_entry(record_id, db)
     if not res:
         raise DocumentNotFound
+    # Log the action
+    log_action(db, user.id, "DELETE", "ledger", str(record_id))  # type: ignore
+    db.commit()
 
 
 @ledger_router.patch("/records/{record_id}", status_code=status.HTTP_200_OK)
@@ -97,6 +103,7 @@ def update_record(
     record_id: int,
     action: LedgerActionChoices = Form(...),
     db: Session = Depends(get_session),
+    user: Users = Depends(get_current_user),
     role_check: None = Depends(role_required(["admin", "auditor"])),
 ):
     """
@@ -107,4 +114,7 @@ def update_record(
     if not updated_record:
         raise DocumentNotFound
 
+    # Log the action
+    log_action(db, user.id, "UPDATE", "ledger", str(record_id))  # type: ignore
+    db.commit()
     return updated_record
