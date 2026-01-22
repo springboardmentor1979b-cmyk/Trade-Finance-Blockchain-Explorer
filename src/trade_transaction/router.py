@@ -5,23 +5,25 @@ trade transactions with role-based access control.
 """
 
 from typing import Optional
-from fastapi import APIRouter, Depends, status, Query, Form
+
+from fastapi import APIRouter, Depends, Form, Query, status
 from sqlmodel import Session, select
-from src.db.models import Users, TradeTransactions
-from src.db.enums import TransactionStatusChoices
-from src.trade_transaction.service import (
-    trade_transaction_service,
-    TradeTransactionService,
-)
-from src.trade_transaction.schemas import (
-    TradeTransactionCreate,
-    TradeTransactionResponse,
-    TradeTransactionStatusUpdate,
-    TradeTransactionListResponse,
-    TransactionResponse,
-)
+
 from src.Auth.dependency import get_current_user, role_required
 from src.db.database import get_session
+from src.db.enums import TransactionStatusChoices
+from src.db.models import TradeTransactions, Users
+from src.trade_transaction.schemas import (
+    TradeTransactionCreate,
+    TradeTransactionListResponse,
+    TradeTransactionResponse,
+    TradeTransactionStatusUpdate,
+    TransactionResponse,
+)
+from src.trade_transaction.service import (
+    TradeTransactionService,
+    trade_transaction_service,
+)
 
 transaction_router = APIRouter()
 
@@ -113,6 +115,11 @@ async def list_transactions(
     status: Optional[TransactionStatusChoices] = Query(
         None, description="Filter by transaction status"
     ),
+    search: Optional[str] = Query(
+        None, description="Search by transaction ID, buyer name, or seller name"
+    ),
+    buyer_id: Optional[int] = Query(None, description="Filter by buyer ID"),
+    seller_id: Optional[int] = Query(None, description="Filter by seller ID"),
     session: Session = Depends(get_session),
     current_user: Users = Depends(get_current_user),
 ) -> TradeTransactionListResponse:
@@ -122,23 +129,23 @@ async def list_transactions(
     - skip: Number of records to skip (default: 0)
     - limit: Maximum records to return (default: 100, max: 1000)
     - status: Optional status filter (pending, in_progress, completed, disputed)
+    - search: Optional search by transaction ID, buyer name, or seller name
+    - buyer_id: Optional filter by buyer ID
+    - seller_id: Optional filter by seller ID
 
     **Returns:**
     - Paginated list of transactions with total count
     """
-    transactions = trade_transaction_service.list_transactions(
+    transactions, total = trade_transaction_service.list_transactions(
         session=session,
         current_user=current_user,
         skip=skip,
         limit=limit,
         status_filter=status,
+        search=search,
+        buyer_id=buyer_id,
+        seller_id=seller_id,
     )
-
-    # Get total count for pagination
-    count_query = select(TradeTransactions)
-    if status:
-        count_query = count_query.where(TradeTransactions.status == status)
-    total = len(session.exec(count_query).all())
 
     return TradeTransactionListResponse(
         total=total,

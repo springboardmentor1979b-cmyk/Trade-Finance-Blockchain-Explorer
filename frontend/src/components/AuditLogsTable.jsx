@@ -3,8 +3,6 @@ import { Eye, Edit3, Trash2, FileText } from "lucide-react";
 
 function AuditLogsTable({
     auditLogs,
-    searchQuery,
-    filterAction,
     onView,
     onEdit,
     onDelete,
@@ -13,26 +11,16 @@ function AuditLogsTable({
     userRole = "admin",
 }) {
     const ITEMS_PER_PAGE = 25;
-    const isPrivileged = userRole === "auditor";
-    const canEdit = isPrivileged;
-    const canDelete = isPrivileged;
+    const isPrivileged = userRole === "auditor" || userRole === "admin";
+    // Note: Audit logs are immutable - edit/delete buttons kept for UI consistency but won't work
+    const canEdit = false; // Audit logs cannot be edited
+    const canDelete = false; // Audit logs cannot be deleted
 
-    // Filter audit logs
-    const filteredAuditLogs = auditLogs.filter((a) => {
-        const matchesSearch =
-            (a.admin_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (a.action || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (a.target_type || "").toLowerCase().includes(searchQuery.toLowerCase());
-
-        const matchesAction = filterAction === "all" || a.action === filterAction;
-
-        return matchesSearch && matchesAction;
-    });
-
-    const totalPages = Math.ceil(filteredAuditLogs.length / ITEMS_PER_PAGE);
+    // Data is already filtered by backend, just paginate
+    const totalPages = Math.ceil(auditLogs.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
-    const paginatedAuditLogs = filteredAuditLogs.slice(startIndex, endIndex);
+    const paginatedAuditLogs = auditLogs.slice(startIndex, endIndex);
 
     const actionColors = {
         CREATE: "text-slate-300",
@@ -81,7 +69,12 @@ function AuditLogsTable({
                                             <FileText className="w-5 h-5 text-blue-400" />
                                         </div>
                                         <span className="text-white font-medium">
-                                            LOG-{String(auditLog.id).padStart(3, "0")}-2024
+                                            LOG-
+                                            {String(auditLog.id).padStart(
+                                                3,
+                                                "0",
+                                            )}
+                                            -2024
                                         </span>
                                     </div>
                                 </td>
@@ -89,7 +82,9 @@ function AuditLogsTable({
                                     {auditLog.admin_name}
                                 </td>
                                 <td className="py-4 px-6">
-                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${actionColors[auditLog.action] || "bg-slate-500/20 text-slate-400"}`}>
+                                    <span
+                                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${actionColors[auditLog.action] || "bg-slate-500/20 text-slate-400"}`}
+                                    >
                                         {auditLog.action}
                                     </span>
                                 </td>
@@ -97,7 +92,9 @@ function AuditLogsTable({
                                     {auditLog.target_type}
                                 </td>
                                 <td className="py-4 px-6 text-slate-300">
-                                    {new Date(auditLog.timestamp).toLocaleDateString()}
+                                    {new Date(
+                                        auditLog.timestamp,
+                                    ).toLocaleDateString()}
                                 </td>
                                 <td className="py-4 px-6">
                                     <div className="flex items-center justify-end gap-2">
@@ -119,7 +116,9 @@ function AuditLogsTable({
                                         )}
                                         {canDelete && (
                                             <button
-                                                onClick={() => onDelete(auditLog.id)}
+                                                onClick={() =>
+                                                    onDelete(auditLog.id)
+                                                }
                                                 className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
                                                 title="Delete"
                                             >
@@ -145,8 +144,10 @@ function AuditLogsTable({
             {totalPages > 1 && (
                 <div className="flex items-center justify-between p-4 border-t border-white/10">
                     <p className="text-sm text-slate-400">
-                        Showing {startIndex + 1} to {Math.min(endIndex, filteredAuditLogs.length)} of{" "}
-                        {filteredAuditLogs.length} entries | Page {currentPage} of {totalPages}
+                        Showing {startIndex + 1} to{" "}
+                        {Math.min(endIndex, filteredAuditLogs.length)} of{" "}
+                        {filteredAuditLogs.length} entries | Page {currentPage}{" "}
+                        of {totalPages}
                     </p>
                     <div className="flex gap-2">
                         <button

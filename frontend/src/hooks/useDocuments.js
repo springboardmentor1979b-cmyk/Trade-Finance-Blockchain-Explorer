@@ -1,6 +1,5 @@
 import { useState, useCallback } from "react";
-import api from "../api/axios";
-import { toast } from "react-hot-toast";
+import { tradeChainService, showSuccessToast, showErrorToast } from "../api/services";
 
 /**
  * Custom hook for document management
@@ -19,33 +18,25 @@ export const useDocuments = (initialDocuments = []) => {
     const fetchDocuments = useCallback(async (role) => {
         setLoading(true);
         try {
-            const endpoint =
-                role === "admin" || role === "auditor"
-                    ? "/api/trade_chain/documents"
-                    : "/api/trade_chain/document";
-            const response = await api.get(endpoint);
-            
-            // Transform data if needed based on role
-            // Admin/Auditor gets UserDocumentsResponse list, others get Documents list
-            let docs = [];
+            let response;
             if (role === "admin" || role === "auditor") {
-                // Flatten the structure for the table if needed, or handle it in the component
-                // For now, let's assume we want a flat list of documents with owner info
-                docs = response.data.flatMap(userDocs => 
+                response = await tradeChainService.getAllDocuments();
+                // Flatten the structure for the table
+                const docs = response.flatMap(userDocs => 
                     userDocs.documents.map(doc => ({
                         ...doc,
                         ownerName: userDocs.name,
                         ownerEmail: userDocs.email
                     }))
                 );
+                setDocuments(docs);
             } else {
-                docs = response.data;
+                response = await tradeChainService.getMyDocuments();
+                setDocuments(response || []);
             }
-            
-            setDocuments(docs);
         } catch (error) {
             console.error("Failed to fetch documents:", error);
-            toast.error("Failed to load documents");
+            showErrorToast(error, "Failed to load documents");
         } finally {
             setLoading(false);
         }
@@ -65,12 +56,12 @@ export const useDocuments = (initialDocuments = []) => {
 
     const deleteDocument = async (docId) => {
         try {
-            await api.delete(`/api/trade_chain/document/${docId}`);
+            await tradeChainService.deleteDocument(docId);
             setDocuments((prev) => prev.filter((d) => d.id !== docId));
-            toast.success("Document deleted successfully");
+            showSuccessToast("Document deleted successfully");
         } catch (error) {
             console.error("Failed to delete document:", error);
-            toast.error("Failed to delete document");
+            showErrorToast(error, "Failed to delete document");
         }
     };
 

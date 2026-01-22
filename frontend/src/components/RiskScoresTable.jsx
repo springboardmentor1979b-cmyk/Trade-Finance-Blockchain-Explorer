@@ -3,8 +3,6 @@ import { Eye, Edit3, Trash2, FileText } from "lucide-react";
 
 function RiskScoresTable({
     riskScores,
-    searchQuery,
-    filterUser,
     onView,
     onEdit,
     onDelete,
@@ -13,29 +11,24 @@ function RiskScoresTable({
     userRole = "admin",
 }) {
     const ITEMS_PER_PAGE = 25;
-    const isPrivileged = userRole === "auditor";
+    const isPrivileged = userRole === "auditor" || userRole === "admin";
     const canEdit = isPrivileged;
     const canDelete = isPrivileged;
 
-    // Filter risk scores
-    const filteredRiskScores = riskScores.filter((r) => {
-        const matchesSearch =
-            (r.user_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (r.category || "").toLowerCase().includes(searchQuery.toLowerCase());
-
-        const matchesUser = filterUser === "all" || r.user_name === filterUser;
-
-        return matchesSearch && matchesUser;
-    });
-
-    const totalPages = Math.ceil(filteredRiskScores.length / ITEMS_PER_PAGE);
+    // Data is already filtered by backend, just paginate
+    const totalPages = Math.ceil(riskScores.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
-    const paginatedRiskScores = filteredRiskScores.slice(startIndex, endIndex);
+    const paginatedRiskScores = riskScores.slice(startIndex, endIndex);
 
     const getRiskLevel = (score) => {
-        if (score > 70) return { text: "High", color: "bg-red-500/20 text-red-400" };
-        if (score > 40) return { text: "Medium", color: "bg-yellow-500/20 text-yellow-400" };
+        if (score > 70)
+            return { text: "High", color: "bg-red-500/20 text-red-400" };
+        if (score > 40)
+            return {
+                text: "Medium",
+                color: "bg-yellow-500/20 text-yellow-400",
+            };
         return { text: "Low", color: "bg-green-500/20 text-green-400" };
     };
 
@@ -52,10 +45,10 @@ function RiskScoresTable({
                                 User
                             </th>
                             <th className="text-left py-4 px-6 text-slate-400 font-medium text-sm">
-                                Category
+                                Score
                             </th>
                             <th className="text-left py-4 px-6 text-slate-400 font-medium text-sm">
-                                Score
+                                Rationale
                             </th>
                             <th className="text-left py-4 px-6 text-slate-400 font-medium text-sm">
                                 Updated At
@@ -79,28 +72,39 @@ function RiskScoresTable({
                                                 <FileText className="w-5 h-5 text-blue-400" />
                                             </div>
                                             <span className="text-white font-medium">
-                                                RISK-{String(riskScore.id).padStart(3, "0")}-2024
+                                                RISK-
+                                                {String(riskScore.id).padStart(
+                                                    3,
+                                                    "0",
+                                                )}
+                                                -2024
                                             </span>
                                         </div>
                                     </td>
                                     <td className="py-4 px-6 text-slate-300">
                                         {riskScore.user_name}
                                     </td>
-                                    <td className="py-4 px-6 text-slate-300">
-                                        {riskScore.category}
-                                    </td>
                                     <td className="py-4 px-6">
-                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-500/20 text-yellow-400`}>
+                                        <span
+                                            className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${riskLevel.color}`}
+                                        >
                                             {riskScore.score}
                                         </span>
                                     </td>
+                                    <td className="py-4 px-6 text-slate-300 max-w-xs truncate">
+                                        {riskScore.rationale || "-"}
+                                    </td>
                                     <td className="py-4 px-6 text-slate-300">
-                                        {new Date(riskScore.last_updated).toLocaleDateString()}
+                                        {new Date(
+                                            riskScore.last_updated,
+                                        ).toLocaleDateString()}
                                     </td>
                                     <td className="py-4 px-6">
                                         <div className="flex items-center justify-end gap-2">
                                             <button
-                                                onClick={() => onView(riskScore)}
+                                                onClick={() =>
+                                                    onView(riskScore)
+                                                }
                                                 className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
                                                 title="View"
                                             >
@@ -108,7 +112,9 @@ function RiskScoresTable({
                                             </button>
                                             {canEdit && (
                                                 <button
-                                                    onClick={() => onEdit(riskScore)}
+                                                    onClick={() =>
+                                                        onEdit(riskScore)
+                                                    }
                                                     className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
                                                     title="Edit"
                                                 >
@@ -117,7 +123,9 @@ function RiskScoresTable({
                                             )}
                                             {canDelete && (
                                                 <button
-                                                    onClick={() => onDelete(riskScore.id)}
+                                                    onClick={() =>
+                                                        onDelete(riskScore.id)
+                                                    }
                                                     className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
                                                     title="Delete"
                                                 >
@@ -132,7 +140,7 @@ function RiskScoresTable({
                     </tbody>
                 </table>
 
-                {filteredRiskScores.length === 0 && (
+                {riskScores.length === 0 && (
                     <div className="text-center py-12">
                         <FileText className="w-12 h-12 text-slate-500 mx-auto mb-4" />
                         <p className="text-slate-400">No risk scores found</p>
@@ -144,8 +152,10 @@ function RiskScoresTable({
             {totalPages > 1 && (
                 <div className="flex items-center justify-between p-4 border-t border-white/10">
                     <p className="text-sm text-slate-400">
-                        Showing {startIndex + 1} to {Math.min(endIndex, filteredRiskScores.length)} of{" "}
-                        {filteredRiskScores.length} entries | Page {currentPage} of {totalPages}
+                        Showing {startIndex + 1} to{" "}
+                        {Math.min(endIndex, riskScores.length)} of{" "}
+                        {riskScores.length} entries | Page {currentPage} of{" "}
+                        {totalPages}
                     </p>
                     <div className="flex gap-2">
                         <button

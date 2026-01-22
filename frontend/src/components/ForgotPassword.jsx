@@ -1,14 +1,17 @@
 import { useState, useEffect } from "react";
-import api from "../api/axios.js";
+import {
+    authService,
+    showSuccessToast,
+    showErrorToast,
+} from "../api/services.js";
 import Card from "./ui/Card.jsx";
-import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
 export default function ForgotPassword() {
     const navigate = useNavigate();
 
     const [email, setEmail] = useState(
-        localStorage.getItem("reset_email") || ""
+        localStorage.getItem("reset_email") || "",
     );
     const [otp, setOtp] = useState("");
     const [newPassword, setNewPassword] = useState("");
@@ -30,14 +33,11 @@ export default function ForgotPassword() {
         e.preventDefault();
         setLoading(true);
         try {
-            await api.post("/api/auth/forgotpassword", { email: email });
-            toast.success("OTP sent to your email!");
+            await authService.forgotPassword(email);
+            showSuccessToast("OTP sent to your email!");
             setStep("OTP");
         } catch (err) {
-            toast.error(
-                err.response?.data?.message ||
-                    "Failed to send OTP. Please try again."
-            );
+            showErrorToast(err, "Failed to send OTP. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -49,16 +49,11 @@ export default function ForgotPassword() {
         setLoading(true);
         try {
             const reset_email = localStorage.getItem("reset_email");
-            await api.post(
-                `/api/auth/verify-otp?email=${reset_email}&otp=${otp}`,
-                {}
-            );
-            toast.success("OTP verified successfully!");
+            await authService.verifyOtp(reset_email, otp);
+            showSuccessToast("OTP verified successfully!");
             setStep("RESET");
         } catch (err) {
-            toast.error(
-                err.response?.data?.message || "Invalid OTP. Please try again."
-            );
+            showErrorToast(err, "Invalid OTP. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -69,24 +64,21 @@ export default function ForgotPassword() {
         e.preventDefault();
         const reset_email = localStorage.getItem("reset_email");
         if (newPassword !== confirmPassword) {
-            toast.error("Passwords do not match");
+            showErrorToast(
+                { message: "Passwords do not match" },
+                "Passwords do not match",
+            );
             return;
         }
 
         setLoading(true);
         try {
-            await api.post(
-                `/api/auth/reset-password?email=${reset_email}&new_password=${newPassword}`,
-                {}
-            );
-            toast.success("Password updated successfully!");
+            await authService.resetPassword(reset_email, newPassword);
+            showSuccessToast("Password updated successfully!");
             localStorage.removeItem("reset_email");
             navigate("/login");
         } catch (err) {
-            toast.error(
-                err.response?.data?.message ||
-                    "Failed to reset password. Try again."
-            );
+            showErrorToast(err, "Failed to reset password. Try again.");
         } finally {
             setLoading(false);
         }

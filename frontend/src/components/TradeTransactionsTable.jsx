@@ -3,9 +3,6 @@ import { Eye, Edit3, Trash2, FileText } from "lucide-react";
 
 function TradeTransactionsTable({
     transactions,
-    searchQuery,
-    filterStatus,
-    filterBuyer,
     onView,
     onEdit,
     onDelete,
@@ -18,24 +15,11 @@ function TradeTransactionsTable({
     const canEdit = isPrivileged;
     const canDelete = isPrivileged;
 
-    // Filter transactions
-    const filteredTransactions = transactions.filter((t) => {
-        const matchesSearch =
-            (t.buyer_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (t.seller_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (t.amount || "").includes(searchQuery);
-
-        const matchesStatus = filterStatus === "all" || t.status === filterStatus;
-
-        const matchesBuyer = filterBuyer === "all" || t.buyer_name === filterBuyer;
-
-        return matchesSearch && matchesStatus && matchesBuyer;
-    });
-
-    const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE);
+    // Data is already filtered by backend, just paginate
+    const totalPages = Math.ceil(transactions.length / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
-    const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
+    const paginatedTransactions = transactions.slice(startIndex, endIndex);
 
     const statusColors = {
         pending: "bg-yellow-100 text-yellow-800",
@@ -93,12 +77,16 @@ function TradeTransactionsTable({
                                     {transaction.amount} {transaction.currency}
                                 </td>
                                 <td className="py-4 px-6">
-                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-500/20 text-blue-400`}>
+                                    <span
+                                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-500/20 text-blue-400`}
+                                    >
                                         {transaction.status}
                                     </span>
                                 </td>
                                 <td className="py-4 px-6 text-slate-300">
-                                    {new Date(transaction.created_at).toLocaleDateString()}
+                                    {new Date(
+                                        transaction.created_at,
+                                    ).toLocaleDateString()}
                                 </td>
                                 <td className="py-4 px-6">
                                     <div className="flex items-center justify-end gap-2">
@@ -111,7 +99,9 @@ function TradeTransactionsTable({
                                         </button>
                                         {canEdit && (
                                             <button
-                                                onClick={() => onEdit(transaction)}
+                                                onClick={() =>
+                                                    onEdit(transaction)
+                                                }
                                                 className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
                                                 title="Edit"
                                             >
@@ -120,7 +110,9 @@ function TradeTransactionsTable({
                                         )}
                                         {canDelete && (
                                             <button
-                                                onClick={() => onDelete(transaction.id)}
+                                                onClick={() =>
+                                                    onDelete(transaction.id)
+                                                }
                                                 className="p-2 hover:bg-white/10 rounded-lg transition-colors group"
                                                 title="Delete"
                                             >
@@ -134,10 +126,12 @@ function TradeTransactionsTable({
                     </tbody>
                 </table>
 
-                {filteredTransactions.length === 0 && (
+                {transactions.length === 0 && (
                     <div className="text-center py-12">
                         <FileText className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-                        <p className="text-slate-400">No trade transactions found</p>
+                        <p className="text-slate-400">
+                            No trade transactions found
+                        </p>
                     </div>
                 )}
             </div>
@@ -146,8 +140,10 @@ function TradeTransactionsTable({
             {totalPages > 1 && (
                 <div className="flex items-center justify-between p-4 border-t border-white/10">
                     <p className="text-sm text-slate-400">
-                        Showing {startIndex + 1} to {Math.min(endIndex, filteredTransactions.length)} of{" "}
-                        {filteredTransactions.length} entries | Page {currentPage} of {totalPages}
+                        Showing {startIndex + 1} to{" "}
+                        {Math.min(endIndex, transactions.length)} of{" "}
+                        {transactions.length} entries | Page {currentPage} of{" "}
+                        {totalPages}
                     </p>
                     <div className="flex gap-2">
                         <button

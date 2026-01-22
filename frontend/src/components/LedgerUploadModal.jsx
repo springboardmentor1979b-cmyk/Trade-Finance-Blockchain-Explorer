@@ -1,9 +1,8 @@
 import React from "react";
-import { XCircle, Upload, FileText } from "lucide-react";
 
 /**
  * LedgerUploadModal Component
- * Modal for creating a new ledger entry
+ * Modal for creating a new ledger entry for an existing document
  * Bank and Corporate users can create ledgers
  *
  * @component
@@ -13,8 +12,7 @@ import { XCircle, Upload, FileText } from "lucide-react";
  * @param {Function} props.onFormChange - Callback when form data changes
  * @param {Function} props.onClose - Callback when modal is closed
  * @param {Function} props.onSubmit - Callback when form is submitted
- * @param {File} props.uploadFile - Currently selected file
- * @param {Function} props.onFileChange - Callback when file is changed
+ * @param {Array} props.documents - List of existing documents to select from
  */
 function LedgerUploadModal({
     isOpen,
@@ -22,17 +20,9 @@ function LedgerUploadModal({
     onFormChange,
     onClose,
     onSubmit,
-    uploadFile,
-    onFileChange,
     documents = [],
 }) {
     if (!isOpen) return null;
-
-    const handleFileInputChange = (e) => {
-        if (e.target.files && e.target.files[0]) {
-            onFileChange(e.target.files[0]);
-        }
-    };
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -42,178 +32,49 @@ function LedgerUploadModal({
                         Create New Ledger Entry
                     </h2>
                     <p className="text-slate-400 text-sm mt-1">
-                        Add a new ledger entry to the blockchain
+                        Add a new ledger entry for an existing document
                     </p>
                 </div>
 
                 <form onSubmit={onSubmit} className="p-6 space-y-6">
-                    {/* File Upload (Optional) */}
+                    {/* Document Selection */}
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Ledger File (Optional)
+                            Select Document *
                         </label>
-                        <div className="border-2 border-dashed border-slate-600 rounded-xl p-4 text-center hover:border-slate-500 transition-colors">
-                            {uploadFile ? (
-                                <div className="flex items-center justify-center gap-3">
-                                    <FileText className="w-6 h-6 text-green-400" />
-                                    <div className="text-left overflow-hidden">
-                                        <p className="text-white font-medium truncate">
-                                            {uploadFile.name}
-                                        </p>
-                                        <p className="text-slate-400 text-xs">
-                                            {(
-                                                uploadFile.size /
-                                                (1024 * 1024)
-                                            ).toFixed(2)}{" "}
-                                            MB
-                                        </p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            onFileChange
-                                                ? onFileChange(null)
-                                                : console.warn(
-                                                      "onFileChange prop missing"
-                                                  )
-                                        }
-                                        className="ml-auto p-1 hover:bg-white/10 rounded"
-                                    >
-                                        <XCircle className="w-5 h-5 text-slate-400" />
-                                    </button>
-                                </div>
-                            ) : (
-                                <>
-                                    <input
-                                        type="file"
-                                        onChange={handleFileInputChange}
-                                        className="hidden"
-                                        id="ledger-file-upload"
-                                        accept=".pdf,.doc,.docx,.json"
-                                    />
-                                    <label
-                                        htmlFor="ledger-file-upload"
-                                        className="flex flex-col items-center cursor-pointer"
-                                    >
-                                        <Upload className="w-8 h-8 text-slate-400 mb-2" />
-                                        <span className="text-blue-400 text-sm font-medium">
-                                            Click to upload ledger file
-                                        </span>
-                                        <span className="text-slate-500 text-xs mt-1">
-                                            To create a new document
-                                        </span>
-                                    </label>
-                                </>
-                            )}
-                        </div>
+                        {documents && documents.length > 0 ? (
+                            <select
+                                value={formData.document_number || ""}
+                                onChange={(e) =>
+                                    onFormChange({
+                                        ...formData,
+                                        document_number: e.target.value,
+                                    })
+                                }
+                                className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent [&>option]:text-slate-900"
+                            >
+                                <option value="">Select a document</option>
+                                {documents.map((doc) => (
+                                    <option key={doc.id} value={doc.doc_number}>
+                                        {doc.doc_number} ({doc.doc_type})
+                                    </option>
+                                ))}
+                            </select>
+                        ) : (
+                            <div className="text-center py-4 text-slate-400">
+                                <p>No documents available.</p>
+                                <p className="text-sm mt-1">
+                                    Please upload documents first in the Trade
+                                    Chain section.
+                                </p>
+                            </div>
+                        )}
                     </div>
-
-                    {/* Dynamic Fields based on File Upload */}
-                    {uploadFile ? (
-                        <>
-                            {/* Document Type (For New Document) */}
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-2">
-                                    Document Type *
-                                </label>
-                                <select
-                                    value={formData.doc_type || ""}
-                                    onChange={(e) =>
-                                        onFormChange({
-                                            ...formData,
-                                            doc_type: e.target.value,
-                                        })
-                                    }
-                                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent [&>option]:text-slate-900"
-                                >
-                                    <option value="">
-                                        Select Document Type
-                                    </option>
-                                    <option value="letter_of_credit">
-                                        Letter of Credit
-                                    </option>
-                                    <option value="invoice">Invoice</option>
-                                    <option value="bill_of_lading">
-                                        Bill of Lading
-                                    </option>
-                                    <option value="purchase_order">
-                                        Purchase Order
-                                    </option>
-                                    <option value="certificate_of_origin">
-                                        Certificate of Origin
-                                    </option>
-                                    <option value="insurance_certificate">
-                                        Insurance Certificate
-                                    </option>
-                                </select>
-                            </div>
-
-                            {/* Issued At (For New Document) */}
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-2">
-                                    Issued At *
-                                </label>
-                                <input
-                                    type="date"
-                                    value={formData.issued_at || ""}
-                                    onChange={(e) =>
-                                        onFormChange({
-                                            ...formData,
-                                            issued_at: e.target.value,
-                                        })
-                                    }
-                                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent scheme-dark"
-                                />
-                            </div>
-                        </>
-                    ) : (
-                        /* Document Number (For Existing Document) */
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">
-                                Document Number *
-                            </label>
-                            {documents && documents.length > 0 ? (
-                                <select
-                                    value={formData.document_number || ""}
-                                    onChange={(e) =>
-                                        onFormChange({
-                                            ...formData,
-                                            document_number: e.target.value,
-                                        })
-                                    }
-                                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent [&>option]:text-slate-900"
-                                >
-                                    <option value="">Select a document</option>
-                                    {documents.map((doc) => (
-                                        <option
-                                            key={doc.id}
-                                            value={doc.doc_number}
-                                        >
-                                            {doc.doc_number} ({doc.doc_type})
-                                        </option>
-                                    ))}
-                                </select>
-                            ) : (
-                                <input
-                                    type="text"
-                                    value={formData.document_number || ""}
-                                    onChange={(e) =>
-                                        onFormChange({
-                                            ...formData,
-                                            document_number: e.target.value,
-                                        })
-                                    }
-                                    placeholder="e.g., DOC-001-2024"
-                                    className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                />
-                            )}
-                        </div>
-                    )}
 
                     {/* Description */}
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Description
+                            Description (Optional)
                         </label>
                         <textarea
                             value={formData.description || ""}
@@ -241,13 +102,12 @@ function LedgerUploadModal({
                         <button
                             type="submit"
                             disabled={
-                                uploadFile
-                                    ? !formData.doc_type || !formData.issued_at
-                                    : !formData.document_number
+                                !formData.document_number ||
+                                documents.length === 0
                             }
                             className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed rounded-lg text-white font-medium transition-colors"
                         >
-                            Create Ledger
+                            Create Ledger Entry
                         </button>
                     </div>
                 </form>

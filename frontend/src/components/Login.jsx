@@ -2,9 +2,12 @@ import Card from "./ui/Card.jsx";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
-import api from "../api/axios.js";
+import {
+    authService,
+    getErrorMessage,
+    showSuccessToast,
+} from "../api/services.js";
 import { Eye, EyeClosed } from "lucide-react";
-import toast from "react-hot-toast";
 
 function Login() {
     const [email, setEmail] = useState("");
@@ -17,16 +20,11 @@ function Login() {
         event.preventDefault();
         setError("");
         try {
-            const response = await api.post("/api/auth/login", {
-                email: email,
-                password: password,
-            });
-            toast.success("Login successful!");
-            await auth.login(response.data, response.data.user);
+            const response = await authService.login(email, password);
+            showSuccessToast("Login successful!");
+            await auth.login(response, response.user);
         } catch (err) {
-            setError(
-                err.response?.data?.message || "Login failed. Please try again."
-            );
+            setError(getErrorMessage(err, "Login failed. Please try again."));
         } finally {
             setPassword("");
         }

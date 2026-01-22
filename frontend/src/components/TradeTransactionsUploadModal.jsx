@@ -7,6 +7,7 @@ function TradeTransactionsUploadModal({
     onFormChange,
     onClose,
     onSubmit,
+    users = [],
 }) {
     if (!isOpen) return null;
 
@@ -14,7 +15,9 @@ function TradeTransactionsUploadModal({
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-slate-800 rounded-xl border border-white/10 max-w-md w-full p-6">
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-white">Create Trade Transaction</h2>
+                    <h2 className="text-xl font-bold text-white">
+                        Create Trade Transaction
+                    </h2>
                     <button
                         onClick={onClose}
                         className="p-2 hover:bg-white/10 rounded-lg transition-colors"
@@ -26,38 +29,65 @@ function TradeTransactionsUploadModal({
                 <form onSubmit={onSubmit} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Buyer Name
+                            Buyer
                         </label>
-                        <input
-                            type="text"
-                            value={formData.buyer_name}
+                        <select
+                            value={formData.buyer_id}
                             onChange={(e) =>
                                 onFormChange({
                                     ...formData,
-                                    buyer_name: e.target.value,
+                                    buyer_id: e.target.value,
                                 })
                             }
-                            className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter buyer name"
-                        />
+                            className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="" className="bg-slate-800">
+                                Select Buyer
+                            </option>
+                            {users.map((user) => (
+                                <option
+                                    key={user.id}
+                                    value={user.id}
+                                    className="bg-slate-800"
+                                >
+                                    {user.name} ({user.email}) - {user.role}
+                                </option>
+                            ))}
+                        </select>
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Seller Name
+                            Seller
                         </label>
-                        <input
-                            type="text"
-                            value={formData.seller_name}
+                        <select
+                            value={formData.seller_id}
                             onChange={(e) =>
                                 onFormChange({
                                     ...formData,
-                                    seller_name: e.target.value,
+                                    seller_id: e.target.value,
                                 })
                             }
-                            className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Enter seller name"
-                        />
+                            className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="" className="bg-slate-800">
+                                Select Seller
+                            </option>
+                            {users
+                                .filter(
+                                    (u) =>
+                                        u.id.toString() !== formData.buyer_id,
+                                )
+                                .map((user) => (
+                                    <option
+                                        key={user.id}
+                                        value={user.id}
+                                        className="bg-slate-800"
+                                    >
+                                        {user.name} ({user.email}) - {user.role}
+                                    </option>
+                                ))}
+                        </select>
                     </div>
 
                     <div>
@@ -67,6 +97,7 @@ function TradeTransactionsUploadModal({
                         <input
                             type="number"
                             step="0.01"
+                            min="0.01"
                             value={formData.amount}
                             onChange={(e) =>
                                 onFormChange({
@@ -93,11 +124,21 @@ function TradeTransactionsUploadModal({
                             }
                             className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                            <option value="USD" className="bg-slate-800">USD</option>
-                            <option value="EUR" className="bg-slate-800">EUR</option>
-                            <option value="GBP" className="bg-slate-800">GBP</option>
-                            <option value="JPY" className="bg-slate-800">JPY</option>
-                            <option value="INR" className="bg-slate-800">INR</option>
+                            <option value="USD" className="bg-slate-800">
+                                USD
+                            </option>
+                            <option value="EUR" className="bg-slate-800">
+                                EUR
+                            </option>
+                            <option value="GBP" className="bg-slate-800">
+                                GBP
+                            </option>
+                            <option value="JPY" className="bg-slate-800">
+                                JPY
+                            </option>
+                            <option value="INR" className="bg-slate-800">
+                                INR
+                            </option>
                         </select>
                     </div>
 

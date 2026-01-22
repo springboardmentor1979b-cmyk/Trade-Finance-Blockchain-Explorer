@@ -10,15 +10,16 @@ function AuditLogsUploadModal({
 }) {
     if (!isOpen) return null;
 
-    const admins = ["Admin User", "John Smith", "Jane Doe"];
     const actions = ["CREATE", "UPDATE", "DELETE", "VIEW", "EXPORT", "IMPORT"];
-    const targets = ["Document", "Ledger", "Transaction", "User", "Risk Score"];
+    const targets = ["Document", "Ledger", "Transaction", "User", "RiskScore"];
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-slate-800 rounded-xl border border-white/10 max-w-md w-full p-6">
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-white">Create Audit Log Entry</h2>
+                    <h2 className="text-xl font-bold text-white">
+                        Create Audit Log Entry
+                    </h2>
                     <button
                         onClick={onClose}
                         className="p-2 hover:bg-white/10 rounded-lg transition-colors"
@@ -28,31 +29,6 @@ function AuditLogsUploadModal({
                 </div>
 
                 <form onSubmit={onSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Select Admin
-                        </label>
-                        <select
-                            value={formData.admin_name}
-                            onChange={(e) =>
-                                onFormChange({
-                                    ...formData,
-                                    admin_name: e.target.value,
-                                })
-                            }
-                            className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="" className="bg-slate-800">
-                                Select Admin
-                            </option>
-                            {admins.map((admin) => (
-                                <option key={admin} value={admin} className="bg-slate-800">
-                                    {admin}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
                             Action
@@ -71,7 +47,11 @@ function AuditLogsUploadModal({
                                 Select Action
                             </option>
                             {actions.map((action) => (
-                                <option key={action} value={action} className="bg-slate-800">
+                                <option
+                                    key={action}
+                                    value={action}
+                                    className="bg-slate-800"
+                                >
                                     {action}
                                 </option>
                             ))}
@@ -96,7 +76,11 @@ function AuditLogsUploadModal({
                                 Select Target Type
                             </option>
                             {targets.map((target) => (
-                                <option key={target} value={target} className="bg-slate-800">
+                                <option
+                                    key={target}
+                                    value={target}
+                                    className="bg-slate-800"
+                                >
                                     {target}
                                 </option>
                             ))}
@@ -105,10 +89,10 @@ function AuditLogsUploadModal({
 
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Target ID (optional)
+                            Target ID
                         </label>
                         <input
-                            type="number"
+                            type="text"
                             value={formData.target_id}
                             onChange={(e) =>
                                 onFormChange({

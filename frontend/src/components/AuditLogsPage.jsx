@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ArrowLeft, Activity, AlertCircle, CheckCircle } from "lucide-react";
 import AuditLogsTable from "./AuditLogsTable";
 import AuditLogsActionBar from "./AuditLogsActionBar";
@@ -6,74 +6,77 @@ import AuditLogsUploadModal from "./AuditLogsUploadModal";
 import AuditLogsEditModal from "./AuditLogsEditModal";
 import AuditLogsViewModal from "./AuditLogsViewModal";
 import { useAuth } from "../context/AuthContext";
-import { toast } from "react-hot-toast";
+import {
+    auditLogsService,
+    showSuccessToast,
+    showErrorToast,
+} from "../api/services";
 
 function AuditLogsPage({ onClose }) {
     const { role } = useAuth();
 
-    // Generate 50 sample audit logs
-    const generateSampleAuditLogs = () => {
-        const admins = ["Admin User", "John Smith", "Jane Doe"];
-        const actions = [
-            "CREATE",
-            "UPDATE",
-            "DELETE",
-            "VIEW",
-            "EXPORT",
-            "IMPORT",
-        ];
-        const targets = [
-            "Document",
-            "Ledger",
-            "Transaction",
-            "User",
-            "Risk Score",
-        ];
+    // Data states
+    const [auditLogs, setAuditLogs] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-        return Array.from({ length: 50 }, (_, i) => ({
-            id: i + 1,
-            admin_id: (i % 3) + 1,
-            admin_name: admins[i % admins.length],
-            action: actions[i % actions.length],
-            target_type: targets[i % targets.length],
-            target_id: Math.floor(Math.random() * 1000) + 1,
-            description: `${actions[i % actions.length]} operation on ${targets[i % targets.length]}`,
-            timestamp: new Date(
-                Date.now() -
-                    Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)
-            ).toISOString(),
-        }));
-    };
-
-    const [auditLogs, setAuditLogs] = useState(generateSampleAuditLogs());
+    // Search and filter states
     const [searchQuery, setSearchQuery] = useState("");
     const [filterAction, setFilterAction] = useState("all");
     const [currentPage, setCurrentPage] = useState(1);
 
+    // Modal states
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedAuditLog, setSelectedAuditLog] = useState(null);
 
+    // Form states
     const [uploadForm, setUploadForm] = useState({
-        admin_name: "",
         action: "",
         target_type: "",
         target_id: "",
     });
     const [editForm, setEditForm] = useState({ action: "", target_type: "" });
 
-    const canCreate = role === "auditor";
-    const canEdit = role === "auditor";
-    const canDelete = role === "auditor";
-    const canView =
-        role === "auditor" || role === "bank" || role === "corporate";
+    // Role permissions
+    const isPrivileged = role === "admin" || role === "auditor";
+    const canCreate = role === "admin"; // Only admin can create audit logs
+    const canView = isPrivileged;
 
-    // For bank and corporate users, they see all audit logs (they don't filter by admin)
-    // But we could add logic here if needed
-    const getVisibleAuditLogs = () => {
-        return auditLogs;
+    // Fetch audit logs from backend with filters
+    const fetchAuditLogs = async () => {
+        try {
+            setLoading(true);
+            let data;
+            if (canView) {
+                // Build filter object for backend
+                const filters = {};
+                if (searchQuery.trim()) {
+                    filters.search = searchQuery.trim();
+                }
+                if (filterAction && filterAction !== "all") {
+                    filters.action = filterAction;
+                }
+                data = await auditLogsService.getAll(filters);
+            } else {
+                data = [];
+            }
+            setAuditLogs(data || []);
+            setCurrentPage(1); // Reset to first page when filters change
+        } catch (error) {
+            console.error("Failed to fetch audit logs:", error);
+            showErrorToast(error, "Failed to fetch audit logs");
+        } finally {
+            setLoading(false);
+        }
     };
+
+    // Fetch audit logs when role or filters change
+    useEffect(() => {
+        if (canView) {
+            fetchAuditLogs();
+        }
+    }, [role, searchQuery, filterAction]);
 
     if (!canView) {
         return (
@@ -91,82 +94,73 @@ function AuditLogsPage({ onClose }) {
                         Access Restricted
                     </h2>
                     <p className="text-slate-400">
-                        Only Auditor, Bank, and Corporate users can view audit
-                        logs.
+                        Only Admin and Auditor users can view audit logs.
                     </p>
                 </div>
             </div>
         );
     }
 
-    const handleUploadSubmit = (e) => {
+    const handleUploadSubmit = async (e) => {
         e.preventDefault();
-        if (!uploadForm.admin_name) {
-            toast.error("Please select an admin");
-            return;
-        }
         if (!uploadForm.action) {
-            toast.error("Please select an action");
+            showErrorToast(
+                { message: "Please select an action" },
+                "Please select an action",
+            );
             return;
         }
         if (!uploadForm.target_type) {
-            toast.error("Please select target type");
+            showErrorToast(
+                { message: "Please select target type" },
+                "Please select target type",
+            );
+            return;
+        }
+        if (!uploadForm.target_id) {
+            showErrorToast(
+                { message: "Please enter target ID" },
+                "Please enter target ID",
+            );
             return;
         }
 
-        const newAuditLog = {
-            id: auditLogs.length + 1,
-            admin_id: Math.random() * 10,
-            admin_name: uploadForm.admin_name,
-            action: uploadForm.action,
-            target_type: uploadForm.target_type,
-            target_id: uploadForm.target_id || Math.floor(Math.random() * 1000),
-            description: `${uploadForm.action} operation on ${uploadForm.target_type}`,
-            timestamp: new Date().toISOString(),
-        };
-
-        setAuditLogs([newAuditLog, ...auditLogs]);
-        toast.success("Audit log created successfully");
-        setIsUploadModalOpen(false);
-        setUploadForm({
-            admin_name: "",
-            action: "",
-            target_type: "",
-            target_id: "",
-        });
+        try {
+            await auditLogsService.create(
+                uploadForm.action,
+                uploadForm.target_type,
+                uploadForm.target_id,
+            );
+            showSuccessToast("Audit log created successfully");
+            setIsUploadModalOpen(false);
+            setUploadForm({
+                action: "",
+                target_type: "",
+                target_id: "",
+            });
+            fetchAuditLogs();
+        } catch (error) {
+            console.error("Create audit log error:", error);
+            showErrorToast(error, "Failed to create audit log");
+        }
     };
 
+    // Note: Backend doesn't have edit/delete for audit logs (immutable)
+    // These are kept for UI consistency but won't actually modify data
     const handleEditSubmit = (e) => {
         e.preventDefault();
-        if (!selectedAuditLog) return;
-
-        if (!editForm.action) {
-            toast.error("Please select an action");
-            return;
-        }
-
-        const updatedAuditLogs = auditLogs.map((a) =>
-            a.id === selectedAuditLog.id
-                ? {
-                      ...a,
-                      action: editForm.action,
-                      target_type: editForm.target_type,
-                  }
-                : a
+        showErrorToast(
+            { message: "Audit logs are immutable and cannot be edited" },
+            "Audit logs are immutable and cannot be edited",
         );
-
-        setAuditLogs(updatedAuditLogs);
-        toast.success("Audit log updated successfully");
         setIsEditModalOpen(false);
-        setEditForm({ action: "", target_type: "" });
-        setSelectedAuditLog(null);
     };
 
     const handleDelete = (auditLogId) => {
-        if (window.confirm("Are you sure you want to delete this audit log?")) {
-            setAuditLogs(auditLogs.filter((a) => a.id !== auditLogId));
-            toast.success("Audit log deleted successfully");
-        }
+        showErrorToast(
+            { message: "Audit logs are immutable and cannot be deleted" },
+            "Audit logs are immutable and cannot be deleted",
+        );
     };
 
     const handleView = (auditLog) => {
@@ -185,7 +179,6 @@ function AuditLogsPage({ onClose }) {
 
     const handleCreateClick = () => {
         setUploadForm({
-            admin_name: "",
             action: "",
             target_type: "",
             target_id: "",
@@ -193,7 +186,11 @@ function AuditLogsPage({ onClose }) {
         setIsUploadModalOpen(true);
     };
 
-    const visibleAuditLogs = getVisibleAuditLogs();
+    // Calculate stats
+    const todayLogs = auditLogs.filter(
+        (a) => new Date(a.timestamp) > new Date(Date.now() - 86400000),
+    ).length;
+    const uniqueAdmins = new Set(auditLogs.map((a) => a.admin_name)).size;
 
     return (
         <div className="min-h-full p-6">
@@ -226,7 +223,7 @@ function AuditLogsPage({ onClose }) {
                                     Total Activities
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
-                                    {visibleAuditLogs.length}
+                                    {loading ? "..." : auditLogs.length}
                                 </p>
                             </div>
                             <Activity className="w-12 h-12 text-blue-500/20" />
@@ -240,13 +237,7 @@ function AuditLogsPage({ onClose }) {
                                     Today's Activities
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
-                                    {
-                                        visibleAuditLogs.filter(
-                                            (a) =>
-                                                new Date(a.timestamp) >
-                                                new Date(Date.now() - 86400000)
-                                        ).length
-                                    }
+                                    {loading ? "..." : todayLogs}
                                 </p>
                             </div>
                             <CheckCircle className="w-12 h-12 text-green-500/20" />
@@ -260,13 +251,7 @@ function AuditLogsPage({ onClose }) {
                                     Admins Active
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
-                                    {
-                                        new Set(
-                                            visibleAuditLogs.map(
-                                                (a) => a.admin_name
-                                            )
-                                        ).size
-                                    }
+                                    {loading ? "..." : uniqueAdmins}
                                 </p>
                             </div>
                             <AlertCircle className="w-12 h-12 text-orange-500/20" />
@@ -291,17 +276,21 @@ function AuditLogsPage({ onClose }) {
                             Audit Log Entries
                         </h2>
                     </div>
-                    <AuditLogsTable
-                        auditLogs={visibleAuditLogs}
-                        searchQuery={searchQuery}
-                        filterAction={filterAction}
-                        onView={handleView}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        currentPage={currentPage}
-                        onPageChange={setCurrentPage}
-                        userRole={role}
-                    />
+                    {loading ? (
+                        <div className="p-12 text-center text-slate-400">
+                            Loading audit logs...
+                        </div>
+                    ) : (
+                        <AuditLogsTable
+                            auditLogs={auditLogs}
+                            onView={handleView}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            currentPage={currentPage}
+                            onPageChange={setCurrentPage}
+                            userRole={role}
+                        />
+                    )}
                 </div>
             </div>
 
@@ -313,7 +302,6 @@ function AuditLogsPage({ onClose }) {
                 onClose={() => {
                     setIsUploadModalOpen(false);
                     setUploadForm({
-                        admin_name: "",
                         action: "",
                         target_type: "",
                         target_id: "",

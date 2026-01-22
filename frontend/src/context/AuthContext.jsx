@@ -5,7 +5,7 @@ import React, {
     useContext,
     useRef,
 } from "react";
-import api from "../api/axios.js";
+import { authService } from "../api/services.js";
 import { useNavigate } from "react-router-dom";
 
 const AuthContext = createContext(null);
@@ -26,8 +26,8 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            const res = await api.get("/api/auth/me");
-            setUser(res.data);
+            const userData = await authService.getMe();
+            setUser(userData);
             setIsAuthenticated(true);
         } catch {
             setUser(null);
@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
 
     const logout = async () => {
         try {
-            await api.post("/api/auth/logout");
+            await authService.logout();
         } catch (error) {
             console.error("Logout failed", error);
         } finally {

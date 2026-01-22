@@ -23,8 +23,11 @@ import RiskScoresPage from "./components/RiskScoresPage";
 import AuditLogsPage from "./components/AuditLogsPage";
 import { useDocuments, useUploadForm } from "./hooks/useDocuments";
 import { useAuth } from "./context/AuthContext";
-import api from "./api/axios";
-import { toast } from "react-hot-toast";
+import {
+    tradeChainService,
+    showSuccessToast,
+    showErrorToast,
+} from "./api/services";
 
 function Home() {
     const { isAuthenticated, user, role } = useAuth();
@@ -71,29 +74,30 @@ function Home() {
 
     const handleUploadSubmit = async (e) => {
         e.preventDefault();
-        if (!uploadFile) return toast.error("Please select a file");
+        if (!uploadFile)
+            return showErrorToast(
+                { message: "Please select a file" },
+                "Please select a file",
+            );
         if (!uploadForm.issued_at)
-            return toast.error("Please select issued date");
-
-        const formData = new FormData();
-        formData.append("files", uploadFile);
-        formData.append("doc_type", uploadForm.type);
-        formData.append(
-            "issued_at",
-            new Date(uploadForm.issued_at).toISOString()
-        );
+            return showErrorToast(
+                { message: "Please select issued date" },
+                "Please select issued date",
+            );
 
         try {
-            await api.post("/api/trade_chain/upload", formData, {
-                headers: { "Content-Type": "multipart/form-data" },
-            });
-            toast.success("Document uploaded successfully");
+            await tradeChainService.uploadDocuments(
+                [uploadFile],
+                uploadForm.type,
+                uploadForm.issued_at,
+            );
+            showSuccessToast("Document uploaded successfully");
             setIsUploadModalOpen(false);
             resetForm();
             fetchDocuments(role);
         } catch (error) {
             console.error(error);
-            toast.error("Upload failed");
+            showErrorToast(error, "Upload failed");
         }
     };
 
@@ -101,27 +105,19 @@ function Home() {
         e.preventDefault();
         if (!selectedDocument) return;
 
-        const formData = new FormData();
-        if (uploadFile) {
-            formData.append("file", uploadFile);
-        }
-        formData.append("doc_type", uploadForm.type);
-
         try {
-            await api.put(
-                `/api/trade_chain/document/${selectedDocument.id}`,
-                formData,
-                {
-                    headers: { "Content-Type": "multipart/form-data" },
-                }
+            await tradeChainService.updateDocument(
+                selectedDocument.id,
+                uploadFile,
+                uploadForm.type,
             );
-            toast.success("Document updated successfully");
+            showSuccessToast("Document updated successfully");
             setIsEditModalOpen(false);
             resetForm();
             fetchDocuments(role);
         } catch (error) {
             console.error(error);
-            toast.error("Update failed");
+            showErrorToast(error, "Update failed");
         }
     };
 
@@ -149,7 +145,10 @@ function Home() {
         if (doc.file_url) {
             window.open(doc.file_url, "_blank");
         } else {
-            toast.error("File URL not available");
+            showErrorToast(
+                { message: "File URL not available" },
+                "File URL not available",
+            );
         }
     };
 
@@ -178,7 +177,9 @@ function Home() {
             {activeTab === "ledger" ? (
                 <LedgerPage onClose={() => setActiveTab("documents")} />
             ) : activeTab === "tradeTransactions" ? (
-                <TradeTransactionsPage onClose={() => setActiveTab("documents")} />
+                <TradeTransactionsPage
+                    onClose={() => setActiveTab("documents")}
+                />
             ) : activeTab === "riskScores" ? (
                 <RiskScoresPage onClose={() => setActiveTab("documents")} />
             ) : activeTab === "auditLogs" ? (
@@ -211,7 +212,10 @@ function Home() {
                                 <FileText className="w-5 h-5" />
                                 Documents
                             </button>
-                            {(role === "admin" || role === "auditor" || role === "bank" || role === "corporate") && (
+                            {(role === "admin" ||
+                                role === "auditor" ||
+                                role === "bank" ||
+                                role === "corporate") && (
                                 <button
                                     onClick={() => setActiveTab("ledger")}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -224,9 +228,14 @@ function Home() {
                                     Ledger
                                 </button>
                             )}
-                            {(role === "admin" || role === "auditor" || role === "bank" || role === "corporate") && (
+                            {(role === "admin" ||
+                                role === "auditor" ||
+                                role === "bank" ||
+                                role === "corporate") && (
                                 <button
-                                    onClick={() => setActiveTab("tradeTransactions")}
+                                    onClick={() =>
+                                        setActiveTab("tradeTransactions")
+                                    }
                                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
                                         activeTab === "tradeTransactions"
                                             ? "bg-blue-600 text-white"
@@ -237,7 +246,10 @@ function Home() {
                                     Trade Transactions
                                 </button>
                             )}
-                            {(role === "admin" || role === "auditor" || role === "bank" || role === "corporate") && (
+                            {(role === "admin" ||
+                                role === "auditor" ||
+                                role === "bank" ||
+                                role === "corporate") && (
                                 <button
                                     onClick={() => setActiveTab("riskScores")}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -250,7 +262,10 @@ function Home() {
                                     Risk Scores
                                 </button>
                             )}
-                            {(role === "admin" || role === "auditor" || role === "bank" || role === "corporate") && (
+                            {(role === "admin" ||
+                                role === "auditor" ||
+                                role === "bank" ||
+                                role === "corporate") && (
                                 <button
                                     onClick={() => setActiveTab("auditLogs")}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -277,7 +292,8 @@ function Home() {
                                 label="Letters of Credit"
                                 value={
                                     documents.filter(
-                                        (d) => d.doc_type === "letter_of_credit"
+                                        (d) =>
+                                            d.doc_type === "letter_of_credit",
                                     ).length
                                 }
                                 icon={CreditCard}
@@ -287,7 +303,7 @@ function Home() {
                                 label="Bills of Lading"
                                 value={
                                     documents.filter(
-                                        (d) => d.doc_type === "bill_of_lading"
+                                        (d) => d.doc_type === "bill_of_lading",
                                     ).length
                                 }
                                 icon={Ship}
@@ -297,7 +313,7 @@ function Home() {
                                 label="Invoices"
                                 value={
                                     documents.filter(
-                                        (d) => d.doc_type === "invoice"
+                                        (d) => d.doc_type === "invoice",
                                     ).length
                                 }
                                 icon={FileText}

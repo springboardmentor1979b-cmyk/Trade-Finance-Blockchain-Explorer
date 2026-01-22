@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ArrowLeft, TrendingUp, AlertCircle, CheckCircle } from "lucide-react";
 import TradeTransactionsTable from "./TradeTransactionsTable";
 import TradeTransactionsActionBar from "./TradeTransactionsActionBar";
@@ -6,154 +6,195 @@ import TradeTransactionsUploadModal from "./TradeTransactionsUploadModal";
 import TradeTransactionsEditModal from "./TradeTransactionsEditModal";
 import TradeTransactionsViewModal from "./TradeTransactionsViewModal";
 import { useAuth } from "../context/AuthContext";
-import { toast } from "react-hot-toast";
+import {
+    transactionsService,
+    authService,
+    showSuccessToast,
+    showErrorToast,
+} from "../api/services";
 
 function TradeTransactionsPage({ onClose }) {
-    const { role } = useAuth();
+    const { role, user } = useAuth();
 
-    // Generate 50 sample trade transactions
-    const generateSampleTransactions = () => {
-        const statuses = ["pending", "in_progress", "completed", "disputed"];
-        const currencies = ["USD", "EUR", "GBP", "JPY", "INR"];
-        const parties = ["Bank User", "Corporate User"];
+    // Data states
+    const [transactions, setTransactions] = useState([]);
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-        return Array.from({ length: 50 }, (_, i) => ({
-            id: i + 1,
-            buyer_id: (i % 2) + 1,
-            buyer_name: parties[i % 2],
-            seller_id: (i % 2) + 3,
-            seller_name: parties[(i + 1) % 2],
-            amount: (Math.random() * 1000000 + 10000).toFixed(2),
-            currency: currencies[i % currencies.length],
-            status: statuses[i % statuses.length],
-            created_at: new Date(
-                Date.now() -
-                    Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)
-            ).toISOString(),
-            updated_at: new Date(
-                Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)
-            ).toISOString(),
-        }));
-    };
-
-    const [transactions, setTransactions] = useState(
-        generateSampleTransactions()
-    );
+    // Search and filter states
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState("all");
     const [filterBuyer, setFilterBuyer] = useState("all");
     const [currentPage, setCurrentPage] = useState(1);
 
+    // Modal states
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState(null);
 
+    // Form states
     const [uploadForm, setUploadForm] = useState({
-        buyer_name: "",
-        seller_name: "",
+        buyer_id: "",
+        seller_id: "",
         amount: "",
         currency: "USD",
     });
     const [editForm, setEditForm] = useState({ status: "" });
 
-    const canCreate = role === "bank";
-    const canEdit = role === "admin";
+    // Role permissions
+    const isPrivileged = role === "admin" || role === "auditor";
+    const canCreate = role === "bank" || role === "corporate";
+    const canEdit = role === "admin" || role === "bank" || role === "corporate";
     const canDelete = role === "admin";
 
-    // Filter transactions based on role
-    const getVisibleTransactions = () => {
-        if (role === "admin" || role === "auditor") {
-            return transactions;
-        } else if (role === "bank") {
-            return transactions.filter(
-                (t) =>
-                    t.buyer_name === "Bank User" ||
-                    t.seller_name === "Bank User"
+    // Fetch transactions from backend with filters
+    const fetchTransactions = async () => {
+        try {
+            setLoading(true);
+            // Build filters object
+            const filters = {};
+            if (filterStatus !== "all") filters.status = filterStatus;
+            if (searchQuery.trim()) filters.search = searchQuery.trim();
+            if (filterBuyer !== "all") filters.buyerId = filterBuyer;
+
+            const data = await transactionsService.getAll(0, 1000, filters);
+            // Transform response to match UI expectations
+            const txns = data.transactions || [];
+            setTransactions(
+                txns.map((t) => ({
+                    ...t,
+                    buyer_name: t.buyer?.name || `User ${t.buyer_id}`,
+                    seller_name: t.seller?.name || `User ${t.seller_id}`,
+                })),
             );
-        } else if (role === "corporate") {
-            return transactions.filter(
-                (t) =>
-                    t.buyer_name === "Corporate User" ||
-                    t.seller_name === "Corporate User"
-            );
+            setCurrentPage(1); // Reset to first page when filters change
+        } catch (error) {
+            console.error("Failed to fetch transactions:", error);
+            showErrorToast(error, "Failed to fetch transactions");
+        } finally {
+            setLoading(false);
         }
-        return transactions;
     };
 
-    const handleUploadSubmit = (e) => {
+    // Fetch users for buyer/seller selection
+    const fetchUsers = async () => {
+        try {
+            const data = await authService.getAllUsers();
+            setUsers(data || []);
+        } catch (error) {
+            console.error("Failed to fetch users:", error);
+            // Non-privileged users can't get all users, use empty list
+        }
+    };
+
+    useEffect(() => {
+        fetchTransactions();
+    }, [filterStatus, searchQuery, filterBuyer]);
+
+    useEffect(() => {
+        // Fetch users on mount for filter dropdown and transaction creation
+        // All authenticated users can see users list for creating transactions
+        fetchUsers();
+    }, []);
+
+    const handleUploadSubmit = async (e) => {
         e.preventDefault();
-        if (!uploadForm.buyer_name) {
-            toast.error("Please enter buyer name");
+        if (!uploadForm.buyer_id) {
+            showErrorToast(
+                { message: "Please select a buyer" },
+                "Please select a buyer",
+            );
             return;
         }
-        if (!uploadForm.seller_name) {
-            toast.error("Please enter seller name");
+        if (!uploadForm.seller_id) {
+            showErrorToast(
+                { message: "Please select a seller" },
+                "Please select a seller",
+            );
             return;
         }
-        if (!uploadForm.amount) {
-            toast.error("Please enter amount");
+        if (uploadForm.buyer_id === uploadForm.seller_id) {
+            showErrorToast(
+                { message: "Buyer and seller must be different" },
+                "Buyer and seller must be different",
+            );
+            return;
+        }
+        if (!uploadForm.amount || parseFloat(uploadForm.amount) <= 0) {
+            showErrorToast(
+                { message: "Please enter a valid amount" },
+                "Please enter a valid amount",
+            );
             return;
         }
 
-        const newTransaction = {
-            id: transactions.length + 1,
-            buyer_id: Math.random() * 10,
-            buyer_name: uploadForm.buyer_name,
-            seller_id: Math.random() * 10,
-            seller_name: uploadForm.seller_name,
-            amount: uploadForm.amount,
-            currency: uploadForm.currency,
-            status: "pending",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-        };
-
-        setTransactions([newTransaction, ...transactions]);
-        toast.success("Trade transaction created successfully");
-        setIsUploadModalOpen(false);
-        setUploadForm({
-            buyer_name: "",
-            seller_name: "",
-            amount: "",
-            currency: "USD",
-        });
+        try {
+            await transactionsService.create(
+                parseInt(uploadForm.buyer_id),
+                parseInt(uploadForm.seller_id),
+                uploadForm.amount,
+                uploadForm.currency,
+            );
+            showSuccessToast("Trade transaction created successfully");
+            setIsUploadModalOpen(false);
+            setUploadForm({
+                buyer_id: "",
+                seller_id: "",
+                amount: "",
+                currency: "USD",
+            });
+            fetchTransactions();
+        } catch (error) {
+            console.error("Create transaction error:", error);
+            showErrorToast(error, "Failed to create transaction");
+        }
     };
 
-    const handleEditSubmit = (e) => {
+    const handleEditSubmit = async (e) => {
         e.preventDefault();
         if (!selectedTransaction) return;
 
         if (!editForm.status) {
-            toast.error("Please select a status");
+            showErrorToast(
+                { message: "Please select a status" },
+                "Please select a status",
+            );
             return;
         }
 
-        const updatedTransactions = transactions.map((t) =>
-            t.id === selectedTransaction.id
-                ? {
-                      ...t,
-                      status: editForm.status,
-                      updated_at: new Date().toISOString(),
-                  }
-                : t
-        );
-
-        setTransactions(updatedTransactions);
-        toast.success("Trade transaction updated successfully");
-        setIsEditModalOpen(false);
-        setEditForm({ status: "" });
-        setSelectedTransaction(null);
+        try {
+            await transactionsService.updateStatus(
+                selectedTransaction.id,
+                editForm.status,
+            );
+            showSuccessToast("Trade transaction updated successfully");
+            setIsEditModalOpen(false);
+            setEditForm({ status: "" });
+            setSelectedTransaction(null);
+            fetchTransactions();
+        } catch (error) {
+            console.error("Update transaction error:", error);
+            showErrorToast(error, "Failed to update transaction");
+        }
     };
 
-    const handleDelete = (transactionId) => {
+    const handleDelete = async (transactionId) => {
         if (
-            window.confirm(
-                "Are you sure you want to delete this trade transaction?"
+            !window.confirm(
+                "Are you sure you want to delete this trade transaction?",
             )
         ) {
-            setTransactions(transactions.filter((t) => t.id !== transactionId));
-            toast.success("Trade transaction deleted successfully");
+            return;
+        }
+
+        try {
+            await transactionsService.delete(transactionId);
+            showSuccessToast("Trade transaction deleted successfully");
+            fetchTransactions();
+        } catch (error) {
+            console.error("Delete transaction error:", error);
+            showErrorToast(error, "Failed to delete transaction");
         }
     };
 
@@ -170,15 +211,21 @@ function TradeTransactionsPage({ onClose }) {
 
     const handleCreateClick = () => {
         setUploadForm({
-            buyer_name: "",
-            seller_name: "",
+            buyer_id: "",
+            seller_id: "",
             amount: "",
             currency: "USD",
         });
         setIsUploadModalOpen(true);
     };
 
-    const visibleTransactions = getVisibleTransactions();
+    // Stats calculations
+    const completedCount = transactions.filter(
+        (t) => t.status === "completed",
+    ).length;
+    const disputedCount = transactions.filter(
+        (t) => t.status === "disputed",
+    ).length;
 
     return (
         <div className="min-h-full p-6">
@@ -211,7 +258,7 @@ function TradeTransactionsPage({ onClose }) {
                                     Total Transactions
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
-                                    {visibleTransactions.length}
+                                    {loading ? "..." : transactions.length}
                                 </p>
                             </div>
                             <TrendingUp className="w-12 h-12 text-blue-500/20" />
@@ -225,11 +272,7 @@ function TradeTransactionsPage({ onClose }) {
                                     Completed
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
-                                    {
-                                        visibleTransactions.filter(
-                                            (t) => t.status === "completed"
-                                        ).length
-                                    }
+                                    {loading ? "..." : completedCount}
                                 </p>
                             </div>
                             <CheckCircle className="w-12 h-12 text-green-500/20" />
@@ -243,11 +286,7 @@ function TradeTransactionsPage({ onClose }) {
                                     Disputed
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
-                                    {
-                                        visibleTransactions.filter(
-                                            (t) => t.status === "disputed"
-                                        ).length
-                                    }
+                                    {loading ? "..." : disputedCount}
                                 </p>
                             </div>
                             <AlertCircle className="w-12 h-12 text-red-500/20" />
@@ -265,6 +304,7 @@ function TradeTransactionsPage({ onClose }) {
                     onFilterBuyerChange={setFilterBuyer}
                     onCreateClick={handleCreateClick}
                     userRole={role}
+                    users={users}
                 />
 
                 {/* Transactions Table */}
@@ -274,18 +314,21 @@ function TradeTransactionsPage({ onClose }) {
                             Trade Transactions
                         </h2>
                     </div>
-                    <TradeTransactionsTable
-                        transactions={visibleTransactions}
-                        searchQuery={searchQuery}
-                        filterStatus={filterStatus}
-                        filterBuyer={filterBuyer}
-                        onView={handleView}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        currentPage={currentPage}
-                        onPageChange={setCurrentPage}
-                        userRole={role}
-                    />
+                    {loading ? (
+                        <div className="p-12 text-center text-slate-400">
+                            Loading transactions...
+                        </div>
+                    ) : (
+                        <TradeTransactionsTable
+                            transactions={transactions}
+                            onView={handleView}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            currentPage={currentPage}
+                            onPageChange={setCurrentPage}
+                            userRole={role}
+                        />
+                    )}
                 </div>
             </div>
 
@@ -294,11 +337,12 @@ function TradeTransactionsPage({ onClose }) {
                 isOpen={isUploadModalOpen}
                 formData={uploadForm}
                 onFormChange={setUploadForm}
+                users={users}
                 onClose={() => {
                     setIsUploadModalOpen(false);
                     setUploadForm({
-                        buyer_name: "",
-                        seller_name: "",
+                        buyer_id: "",
+                        seller_id: "",
                         amount: "",
                         currency: "USD",
                     });

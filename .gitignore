@@ -62,4 +62,3 @@ Thumbs.db
 
 # Alembic
 alembic/versions/__pycache__/
-docker-compose.yml

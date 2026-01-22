@@ -6,8 +6,12 @@ import LedgerUploadModal from "./LedgerUploadModal";
 import LedgerEditModal from "./LedgerEditModal";
 import LedgerViewModal from "./LedgerViewModal";
 import { useAuth } from "../context/AuthContext";
-import { toast } from "react-hot-toast";
-import api from "../api/axios";
+import {
+    ledgerService,
+    tradeChainService,
+    showSuccessToast,
+    showErrorToast,
+} from "../api/services";
 
 /**
  * LedgerPage Component
@@ -42,11 +46,8 @@ function LedgerPage({ onClose }) {
     const [uploadForm, setUploadForm] = useState({
         document_number: "",
         description: "",
-        doc_type: "",
-        issued_at: "",
     });
     const [editForm, setEditForm] = useState({ action: "" });
-    const [uploadFile, setUploadFile] = useState(null);
 
     // Documents list for dropdown
     const [documents, setDocuments] = useState([]);
@@ -57,10 +58,6 @@ function LedgerPage({ onClose }) {
     const fetchLedgers = async () => {
         try {
             setLoading(true);
-            const endpoint = isPrivileged
-                ? "/api/ledger/records/admin"
-                : "/api/ledger/records/user";
-
             const params = {
                 page: currentPage,
                 page_size: 25,
@@ -70,8 +67,12 @@ function LedgerPage({ onClose }) {
             if (filterAction !== "all") params.action = filterAction;
             if (startDate) params.start_date = startDate;
 
-            const response = await api.get(endpoint, { params });
-            const data = response.data;
+            let data;
+            if (isPrivileged) {
+                data = await ledgerService.getAllRecords(params);
+            } else {
+                data = await ledgerService.getMyRecords(params);
+            }
 
             setLedgers(data.items);
             setTotalItems(data.total);
@@ -85,7 +86,7 @@ function LedgerPage({ onClose }) {
             }));
         } catch (error) {
             console.error("Failed to fetch ledgers:", error);
-            toast.error("Failed to fetch ledger records");
+            showErrorToast(error, "Failed to fetch ledger records");
         } finally {
             setLoading(false);
         }
@@ -94,8 +95,8 @@ function LedgerPage({ onClose }) {
     const fetchDocuments = async () => {
         if (role !== "bank" && role !== "corporate") return;
         try {
-            const response = await api.get("/api/trade_chain/document");
-            setDocuments(response.data || []);
+            const response = await tradeChainService.getMyDocuments();
+            setDocuments(response || []);
         } catch (error) {
             console.error("Failed to fetch documents:", error);
         }
@@ -115,110 +116,42 @@ function LedgerPage({ onClose }) {
     const handleUploadSubmit = async (e) => {
         e.preventDefault();
 
-        // FLOW 1: New Document Upload
-        if (uploadFile) {
-            if (!uploadForm.doc_type || !uploadForm.issued_at) {
-                toast.error(
-                    "Please fill in all required fields for new document."
-                );
-                return;
-            }
-
-            try {
-                const formData = new FormData();
-                formData.append("files", uploadFile); // Note: Backend expects 'files' list
-                formData.append("doc_type", uploadForm.doc_type);
-                formData.append(
-                    "issued_at",
-                    new Date(uploadForm.issued_at).toISOString()
-                );
-
-                const uploadRes = await api.post(
-                    "/api/trade_chain/upload",
-                    formData,
-                    {
-                        headers: { "Content-Type": "multipart/form-data" },
-                    }
-                );
-
-                const newDocs = uploadRes.data;
-                if (!newDocs || newDocs.length === 0)
-                    throw new Error("No document returned");
-                const newDoc = newDocs[0];
-
-                await api.post("/api/ledger/entry", {
-                    document_id: newDoc.id,
-                    action: "issued",
-                    metadatav: {
-                        description: uploadForm.description || "Initial upload",
-                    },
-                });
-
-                toast.success("Document uploaded and ledger entry created");
-                setIsUploadModalOpen(false);
-                setUploadForm({
-                    document_number: "",
-                    description: "",
-                    doc_type: "",
-                    issued_at: "",
-                });
-                setUploadFile(null);
-                fetchLedgers();
-                fetchDocuments(); // Refresh documents list
-            } catch (error) {
-                console.error("Upload error:", error);
-                toast.error("Failed to upload document and create entry");
-            }
-            return;
-        }
-
-        // FLOW 2: Existing Document Ledger Entry
         if (!uploadForm.document_number) {
-            toast.error("Please enter/select document number");
+            showErrorToast(
+                { message: "Please select a document" },
+                "Please select a document",
+            );
             return;
         }
 
-        let docId = null;
-        if (documents.length > 0) {
-            const doc = documents.find(
-                (d) => d.doc_number === uploadForm.document_number
-            );
-            if (doc) docId = doc.id;
-        }
+        // Find document ID from selected document number
+        const doc = documents.find(
+            (d) => d.doc_number === uploadForm.document_number,
+        );
 
-        if (!docId) {
-            if (documents.length === 0) {
-                toast.error(
-                    "Unable to verify document. Please ensure documents are loaded."
-                );
-                return;
-            }
-            toast.error("Invalid Document Number selected.");
+        if (!doc) {
+            showErrorToast(
+                { message: "Invalid document selected" },
+                "Invalid document selected",
+            );
             return;
         }
 
         try {
-            await api.post("/api/ledger/entry", {
-                document_id: docId,
-                action: "issued",
-                metadatav: {
-                    description: uploadForm.description,
-                },
+            await ledgerService.createEntry(doc.id, "issued", {
+                description: uploadForm.description || "",
             });
 
-            toast.success("Ledger entry created successfully");
+            showSuccessToast("Ledger entry created successfully");
             setIsUploadModalOpen(false);
             setUploadForm({
                 document_number: "",
                 description: "",
-                doc_type: "",
-                issued_at: "",
             });
-            setUploadFile(null);
             fetchLedgers();
         } catch (error) {
             console.error("Create ledger error:", error);
-            toast.error("Failed to create ledger entry");
+            showErrorToast(error, "Failed to create ledger entry");
         }
     };
 
@@ -227,27 +160,27 @@ function LedgerPage({ onClose }) {
         if (!selectedLedger) return;
 
         if (!editForm.action) {
-            toast.error("Please select an action");
+            showErrorToast(
+                { message: "Please select an action" },
+                "Please select an action",
+            );
             return;
         }
 
         try {
-            const formData = new FormData();
-            formData.append("action", editForm.action);
-
-            await api.patch(
-                `/api/ledger/records/${selectedLedger.id}`,
-                formData
+            await ledgerService.updateRecord(
+                selectedLedger.id,
+                editForm.action,
             );
 
-            toast.success("Ledger action updated successfully");
+            showSuccessToast("Ledger action updated successfully");
             setIsEditModalOpen(false);
             setEditForm({ action: "" });
             setSelectedLedger(null);
             fetchLedgers();
         } catch (error) {
             console.error("Update ledger error:", error);
-            toast.error("Failed to update ledger");
+            showErrorToast(error, "Failed to update ledger");
         }
     };
 
@@ -256,12 +189,12 @@ function LedgerPage({ onClose }) {
             window.confirm("Are you sure you want to delete this ledger entry?")
         ) {
             try {
-                await api.delete(`/api/ledger/records/${ledgerId}`);
-                toast.success("Ledger entry deleted successfully");
+                await ledgerService.deleteRecord(ledgerId);
+                showSuccessToast("Ledger entry deleted successfully");
                 fetchLedgers();
             } catch (error) {
                 console.error("Delete ledger error:", error);
-                toast.error("Failed to delete ledger entry");
+                showErrorToast(error, "Failed to delete ledger entry");
             }
         }
     };
@@ -279,7 +212,6 @@ function LedgerPage({ onClose }) {
 
     const handleCreateClick = () => {
         setUploadForm({ document_number: "", description: "" });
-        setUploadFile(null);
         setIsUploadModalOpen(true);
     };
 
@@ -395,11 +327,8 @@ function LedgerPage({ onClose }) {
                 onClose={() => {
                     setIsUploadModalOpen(false);
                     setUploadForm({ document_number: "", description: "" });
-                    setUploadFile(null);
                 }}
                 onSubmit={handleUploadSubmit}
-                uploadFile={uploadFile}
-                onFileChange={setUploadFile}
                 documents={documents}
             />
 

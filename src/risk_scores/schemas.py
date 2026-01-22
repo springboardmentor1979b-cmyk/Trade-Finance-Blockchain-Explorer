@@ -1,6 +1,7 @@
-from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
+
+from pydantic import BaseModel
 
 
 class RiskScoreCreate(BaseModel):
@@ -15,7 +16,7 @@ class RiskScoreUpdate(BaseModel):
 
 
 class RiskScoreResponse(BaseModel):
-    id: str
+    id: int
     score: float
     rationale: str
     last_updated: datetime

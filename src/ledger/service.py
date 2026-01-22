@@ -1,9 +1,12 @@
-from src.db.models import LedgerEntries, Documents, Users
-from fastapi import HTTPException, status
-from .schemas import LedgerCreate
 from datetime import date, datetime
-from sqlmodel import Session, select
+
+from fastapi import HTTPException, status
 from sqlalchemy import func
+from sqlmodel import Session, select
+
+from src.db.models import Documents, LedgerEntries, Users
+
+from .schemas import LedgerCreate
 
 
 class LedgerService:
@@ -117,16 +120,40 @@ class LedgerService:
     @staticmethod
     def get_user_ledger_records(db: Session, page: int, page_size: int, user_id: int):
         offset = (page - 1) * page_size
-        total = db.exec(select(func.count()).select_from(LedgerEntries)).one()
+
+        # Count only user's records
+        total = db.exec(
+            select(func.count())
+            .select_from(LedgerEntries)
+            .where(LedgerEntries.actor_id == user_id)
+        ).one()
+
+        # Fetch with joins to get document and user info
         logs = db.exec(
             select(LedgerEntries)
+            .join(Documents)
+            .join(Users, LedgerEntries.actor_id == Users.id)
             .where(LedgerEntries.actor_id == user_id)
             .order_by(LedgerEntries.created_at.desc())  # type: ignore
             .offset(offset)
             .limit(page_size)
         ).all()
 
-        return {"total": total, "page": page, "page_size": page_size, "items": logs}
+        # Format response to match LedgerOut schema
+        items = [
+            {
+                "id": ledger.id,
+                "document_number": ledger.document.doc_number
+                if ledger.document
+                else "N/A",  # type: ignore
+                "action": ledger.action,
+                "user_name": ledger.actor.name if ledger.actor else "Unknown",  # type: ignore
+                "created_at": ledger.created_at,
+            }
+            for ledger in logs
+        ]
+
+        return {"total": total, "page": page, "page_size": page_size, "items": items}
 
     @staticmethod
     def edit_action(ledger_id: int, new_action: str, db: Session):

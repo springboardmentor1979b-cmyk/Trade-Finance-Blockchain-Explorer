@@ -63,15 +63,16 @@ from sqlmodel import Session
 
 from src.db.database import get_session
 
-from .service import authService
-from .dependency import get_current_user
+from .dependency import get_current_user, role_required
 from .schemas import (
     TokenResponseModel,
     UserCreateModel,
+    UserEmailModel,
     UserLoginModel,
     UserResponseModel,
-    UserEmailModel,
 )
+from .service import authService
+
 # from src.errors import LogoutError
 
 authRouter = APIRouter()
@@ -410,3 +411,30 @@ def reset_password(email: str, new_password: str, db: Session = Depends(get_sess
         return {
             "detail": "Password successfully reset. You can now login with your new password"
         }
+
+
+@authRouter.get("/users", response_model=list[UserResponseModel])
+def get_all_users(
+    db: Session = Depends(get_session),
+    role_check: None = Depends(
+        role_required(["bank", "corporate", "admin", "auditor"])
+    ),
+):
+    """Retrieve all users in the system.
+
+    Returns a list of all registered users. Only accessible by admin and auditor roles.
+    Used for user selection in risk scores, transactions, and audit logs.
+
+    Args:
+        db (Session): Database session. Injected by FastAPI's dependency system.
+        role_check: Role validation ensuring only admin/auditor can access.
+
+    Returns:
+        list[UserResponseModel]: List of all users with their profile information.
+
+    HTTP Status Codes:
+        200: Users list successfully retrieved.
+        403: Forbidden if user role is not admin or auditor.
+    """
+    users = service.get_all_users(db)
+    return [UserResponseModel(**user.model_dump()) for user in users]

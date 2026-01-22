@@ -1,6 +1,7 @@
-from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
+
+from pydantic import BaseModel
 
 
 class AuditLogCreate(BaseModel):
@@ -10,7 +11,7 @@ class AuditLogCreate(BaseModel):
 
 
 class AuditLogResponse(BaseModel):
-    id: str
+    id: int
     admin_id: int
     action: str
     target_type: str

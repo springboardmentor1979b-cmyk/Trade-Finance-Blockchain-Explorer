@@ -10,10 +10,10 @@ function TradeTransactionsActionBar({
     onFilterBuyerChange,
     onCreateClick,
     userRole = "admin",
+    users = [], // Accept users from parent
 }) {
     const canCreate = userRole === "bank" || userRole === "corporate";
-
-    const buyers = ["Bank User", "Corporate User"];
+    const showBuyerFilter = userRole === "admin" || userRole === "auditor";
 
     return (
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 mb-6 border border-white/10">
@@ -23,7 +23,7 @@ function TradeTransactionsActionBar({
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
                     <input
                         type="text"
-                        placeholder="Search by buyer, seller, or amount..."
+                        placeholder="Search by transaction ID, buyer, or seller..."
                         value={searchQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
                         className="w-full pl-10 pr-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -36,7 +36,9 @@ function TradeTransactionsActionBar({
                     <div className="relative">
                         <select
                             value={filterStatus}
-                            onChange={(e) => onFilterStatusChange(e.target.value)}
+                            onChange={(e) =>
+                                onFilterStatusChange(e.target.value)
+                            }
                             className="appearance-none bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 pr-10 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                         >
                             <option value="all" className="bg-slate-800">
@@ -45,7 +47,10 @@ function TradeTransactionsActionBar({
                             <option value="pending" className="bg-slate-800">
                                 Pending
                             </option>
-                            <option value="in_progress" className="bg-slate-800">
+                            <option
+                                value="in_progress"
+                                className="bg-slate-800"
+                            >
                                 In Progress
                             </option>
                             <option value="completed" className="bg-slate-800">
@@ -58,24 +63,32 @@ function TradeTransactionsActionBar({
                         <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
                     </div>
 
-                    {/* Buyer Filter */}
-                    <div className="relative">
-                        <select
-                            value={filterBuyer}
-                            onChange={(e) => onFilterBuyerChange(e.target.value)}
-                            className="appearance-none bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 pr-10 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                        >
-                            <option value="all" className="bg-slate-800">
-                                All Buyers
-                            </option>
-                            {buyers.map((buyer) => (
-                                <option key={buyer} value={buyer} className="bg-slate-800">
-                                    {buyer}
+                    {/* Buyer Filter - Only for Admin/Auditor */}
+                    {showBuyerFilter && users.length > 0 && (
+                        <div className="relative">
+                            <select
+                                value={filterBuyer}
+                                onChange={(e) =>
+                                    onFilterBuyerChange(e.target.value)
+                                }
+                                className="appearance-none bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 pr-10 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                            >
+                                <option value="all" className="bg-slate-800">
+                                    All Buyers
                                 </option>
-                            ))}
-                        </select>
-                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
-                    </div>
+                                {users.map((user) => (
+                                    <option
+                                        key={user.id}
+                                        value={user.id}
+                                        className="bg-slate-800"
+                                    >
+                                        {user.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
+                        </div>
+                    )}
 
                     {/* Create Button */}
                     {canCreate && (

@@ -8,11 +8,10 @@ function RiskScoresActionBar({
     onFilterUserChange,
     onCreateClick,
     userRole = "admin",
+    users = [], // Accept users from parent component
 }) {
-    const canCreate = userRole === "auditor";
-    const users = ["Bank User", "Corporate User"];
-    const uniqueUsers = [...new Set(users)].sort();
-    const showUserFilter = userRole === "auditor"; // Only auditor can filter by user
+    const canCreate = userRole === "auditor" || userRole === "admin";
+    const showUserFilter = userRole === "auditor" || userRole === "admin"; // Admin and auditor can filter by user
 
     return (
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 mb-6 border border-white/10">
@@ -22,7 +21,7 @@ function RiskScoresActionBar({
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
                     <input
                         type="text"
-                        placeholder="Search by Risk ID, User, or Category..."
+                        placeholder="Search by user name or rationale..."
                         value={searchQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
                         className="w-full pl-10 pr-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -31,20 +30,26 @@ function RiskScoresActionBar({
 
                 {/* Filters */}
                 <div className="flex flex-wrap gap-3 items-center">
-                    {/* User Filter - Only for Auditor */}
-                    {showUserFilter && (
+                    {/* User Filter - Only for Admin/Auditor */}
+                    {showUserFilter && users.length > 0 && (
                         <div className="relative">
                             <select
                                 value={filterUser}
-                                onChange={(e) => onFilterUserChange(e.target.value)}
+                                onChange={(e) =>
+                                    onFilterUserChange(e.target.value)
+                                }
                                 className="appearance-none bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 pr-10 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                             >
                                 <option value="all" className="bg-slate-800">
                                     All Users
                                 </option>
-                                {uniqueUsers.map((user) => (
-                                    <option key={user} value={user} className="bg-slate-800">
-                                        {user}
+                                {users.map((user) => (
+                                    <option
+                                        key={user.id}
+                                        value={user.id}
+                                        className="bg-slate-800"
+                                    >
+                                        {user.name}
                                     </option>
                                 ))}
                             </select>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ArrowLeft, TrendingUp, AlertCircle, CheckCircle } from "lucide-react";
 import RiskScoresTable from "./RiskScoresTable";
 import RiskScoresActionBar from "./RiskScoresActionBar";
@@ -6,69 +6,106 @@ import RiskScoresUploadModal from "./RiskScoresUploadModal";
 import RiskScoresEditModal from "./RiskScoresEditModal";
 import RiskScoresViewModal from "./RiskScoresViewModal";
 import { useAuth } from "../context/AuthContext";
-import { toast } from "react-hot-toast";
+import {
+    riskScoresService,
+    authService,
+    showSuccessToast,
+    showErrorToast,
+} from "../api/services";
 
 function RiskScoresPage({ onClose }) {
     const { role } = useAuth();
 
-    // Generate 50 sample risk scores
-    const generateSampleRiskScores = () => {
-        const users = ["Bank User", "Corporate User"];
-        const categories = [
-            "Credit Risk",
-            "Operational Risk",
-            "Market Risk",
-            "Compliance Risk",
-        ];
+    // Data states
+    const [riskScores, setRiskScores] = useState([]);
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-        return Array.from({ length: 50 }, (_, i) => ({
-            id: i + 1,
-            user_id: (i % 2) + 1,
-            user_name: users[i % 2],
-            score: Math.floor(Math.random() * 100),
-            category: categories[i % categories.length],
-            rationale: `Risk assessment for ${users[i % 2]}`,
-            last_updated: new Date(
-                Date.now() -
-                    Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)
-            ).toISOString(),
-        }));
-    };
-
-    const [riskScores, setRiskScores] = useState(generateSampleRiskScores());
+    // Search and filter states
     const [searchQuery, setSearchQuery] = useState("");
     const [filterUser, setFilterUser] = useState("all");
     const [currentPage, setCurrentPage] = useState(1);
 
+    // Modal states
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedRiskScore, setSelectedRiskScore] = useState(null);
 
+    // Form states
     const [uploadForm, setUploadForm] = useState({
+        user_id: "",
         user_name: "",
         score: "",
         rationale: "",
     });
     const [editForm, setEditForm] = useState({ score: "", rationale: "" });
 
-    const canCreate = role === "auditor";
-    const canEdit = role === "auditor";
-    const canDelete = role === "auditor";
+    // Role permissions
+    const isPrivileged = role === "admin" || role === "auditor";
+    const canCreate = isPrivileged;
+    const canEdit = isPrivileged;
+    const canDelete = isPrivileged;
     const canView =
-        role === "auditor" || role === "bank" || role === "corporate";
+        role === "auditor" ||
+        role === "admin" ||
+        role === "bank" ||
+        role === "corporate";
 
-    // Filter based on role
-    const getVisibleRiskScores = () => {
-        if (role === "auditor") {
-            return riskScores;
-        } else if (role === "bank") {
-            return riskScores.filter((r) => r.user_name === "Bank User");
-        } else if (role === "corporate") {
-            return riskScores.filter((r) => r.user_name === "Corporate User");
+    // Fetch risk scores from backend with filters
+    const fetchRiskScores = async () => {
+        try {
+            setLoading(true);
+            let data;
+            if (isPrivileged) {
+                // Build filter object for backend
+                const filters = {};
+                if (searchQuery.trim()) {
+                    filters.search = searchQuery.trim();
+                }
+                if (filterUser && filterUser !== "all") {
+                    filters.userId = filterUser;
+                }
+                data = await riskScoresService.getAll(filters);
+            } else {
+                data = await riskScoresService.getMyScores();
+            }
+            setRiskScores(data || []);
+            setCurrentPage(1); // Reset to first page when filters change
+        } catch (error) {
+            console.error("Failed to fetch risk scores:", error);
+            showErrorToast(error, "Failed to fetch risk scores");
+        } finally {
+            setLoading(false);
         }
-        return riskScores;
     };
+
+    // Fetch users for admin/auditor dropdown
+    const fetchUsers = async () => {
+        if (!isPrivileged) return;
+        try {
+            const data = await authService.getAllUsers();
+            setUsers(data || []);
+        } catch (error) {
+            console.error("Failed to fetch users:", error);
+        }
+    };
+
+    // Fetch risk scores when role or filters change
+    useEffect(() => {
+        fetchRiskScores();
+    }, [role, searchQuery, filterUser]);
+
+    // Fetch users on mount for privileged users (for filter dropdown)
+    useEffect(() => {
+        fetchUsers();
+    }, [isPrivileged]);
+
+    useEffect(() => {
+        if (isUploadModalOpen) {
+            fetchUsers();
+        }
+    }, [isUploadModalOpen]);
 
     if (!canView) {
         return (
@@ -86,76 +123,95 @@ function RiskScoresPage({ onClose }) {
                         Access Restricted
                     </h2>
                     <p className="text-slate-400">
-                        Only Auditor, Bank, and Corporate users can view risk
-                        scores.
+                        Only Admin, Auditor, Bank, and Corporate users can view
+                        risk scores.
                     </p>
                 </div>
             </div>
         );
     }
 
-    const handleUploadSubmit = (e) => {
+    const handleUploadSubmit = async (e) => {
         e.preventDefault();
-        if (!uploadForm.user_name) {
-            toast.error("Please select a user");
+        if (!uploadForm.user_id) {
+            showErrorToast(
+                { message: "Please select a user" },
+                "Please select a user",
+            );
             return;
         }
         if (!uploadForm.score) {
-            toast.error("Please enter a risk score");
+            showErrorToast(
+                { message: "Please enter a risk score" },
+                "Please enter a risk score",
+            );
             return;
         }
 
-        const newRiskScore = {
-            id: riskScores.length + 1,
-            user_id: Math.random() * 10,
-            user_name: uploadForm.user_name,
-            user_type:
-                uploadForm.user_name === "Bank User" ? "Bank" : "Corporate",
-            score: parseInt(uploadForm.score),
-            category: "Credit Risk",
-            rationale: uploadForm.rationale,
-            last_updated: new Date().toISOString(),
-        };
-
-        setRiskScores([newRiskScore, ...riskScores]);
-        toast.success("Risk score created successfully");
-        setIsUploadModalOpen(false);
-        setUploadForm({ user_name: "", score: "", rationale: "" });
+        try {
+            await riskScoresService.create(
+                parseInt(uploadForm.user_id),
+                parseFloat(uploadForm.score),
+                uploadForm.rationale || "",
+            );
+            showSuccessToast("Risk score created successfully");
+            setIsUploadModalOpen(false);
+            setUploadForm({
+                user_id: "",
+                user_name: "",
+                score: "",
+                rationale: "",
+            });
+            fetchRiskScores();
+        } catch (error) {
+            console.error("Create risk score error:", error);
+            showErrorToast(error, "Failed to create risk score");
+        }
     };
 
-    const handleEditSubmit = (e) => {
+    const handleEditSubmit = async (e) => {
         e.preventDefault();
         if (!selectedRiskScore) return;
 
         if (!editForm.score) {
-            toast.error("Please enter a risk score");
+            showErrorToast(
+                { message: "Please enter a risk score" },
+                "Please enter a risk score",
+            );
             return;
         }
 
-        const updatedRiskScores = riskScores.map((r) =>
-            r.id === selectedRiskScore.id
-                ? {
-                      ...r,
-                      score: parseInt(editForm.score),
-                      rationale: editForm.rationale,
-                      last_updated: new Date().toISOString(),
-                  }
-                : r
-        );
-
-        setRiskScores(updatedRiskScores);
-        toast.success("Risk score updated successfully");
-        setIsEditModalOpen(false);
-        setEditForm({ score: "", rationale: "" });
-        setSelectedRiskScore(null);
+        try {
+            await riskScoresService.update(
+                selectedRiskScore.id,
+                parseFloat(editForm.score),
+                editForm.rationale || "",
+            );
+            showSuccessToast("Risk score updated successfully");
+            setIsEditModalOpen(false);
+            setEditForm({ score: "", rationale: "" });
+            setSelectedRiskScore(null);
+            fetchRiskScores();
+        } catch (error) {
+            console.error("Update risk score error:", error);
+            showErrorToast(error, "Failed to update risk score");
+        }
     };
 
-    const handleDelete = (riskScoreId) => {
+    const handleDelete = async (riskScoreId) => {
         if (
-            window.confirm("Are you sure you want to delete this risk score?")
+            !window.confirm("Are you sure you want to delete this risk score?")
         ) {
-            setRiskScores(riskScores.filter((r) => r.id !== riskScoreId));
-            toast.success("Risk score deleted successfully");
+            return;
+        }
+
+        try {
+            await riskScoresService.delete(riskScoreId);
+            showSuccessToast("Risk score deleted successfully");
+            fetchRiskScores();
+        } catch (error) {
+            console.error("Delete risk score error:", error);
+            showErrorToast(error, "Failed to delete risk score");
         }
     };
 
@@ -174,11 +230,18 @@ function RiskScoresPage({ onClose }) {
     };
 
     const handleCreateClick = () => {
-        setUploadForm({ user_name: "", score: "", rationale: "" });
+        setUploadForm({ user_id: "", user_name: "", score: "", rationale: "" });
         setIsUploadModalOpen(true);
     };
 
-    const visibleRiskScores = getVisibleRiskScores();
+    // Calculate stats
+    const avgScore =
+        riskScores.length > 0
+            ? (
+                  riskScores.reduce((sum, r) => sum + r.score, 0) /
+                  riskScores.length
+              ).toFixed(1)
+            : "0.0";
 
     return (
         <div className="min-h-full p-6">
@@ -211,7 +274,7 @@ function RiskScoresPage({ onClose }) {
                                     Total Assessments
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
-                                    {visibleRiskScores.length}
+                                    {loading ? "..." : riskScores.length}
                                 </p>
                             </div>
                             <TrendingUp className="w-12 h-12 text-blue-500/20" />
@@ -225,11 +288,10 @@ function RiskScoresPage({ onClose }) {
                                     High Risk
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
-                                    {
-                                        visibleRiskScores.filter(
-                                            (r) => r.score > 70
-                                        ).length
-                                    }
+                                    {loading
+                                        ? "..."
+                                        : riskScores.filter((r) => r.score > 70)
+                                              .length}
                                 </p>
                             </div>
                             <AlertCircle className="w-12 h-12 text-red-500/20" />
@@ -243,12 +305,7 @@ function RiskScoresPage({ onClose }) {
                                     Average Score
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
-                                    {(
-                                        visibleRiskScores.reduce(
-                                            (sum, r) => sum + r.score,
-                                            0
-                                        ) / visibleRiskScores.length
-                                    ).toFixed(1)}
+                                    {loading ? "..." : avgScore}
                                 </p>
                             </div>
                             <CheckCircle className="w-12 h-12 text-green-500/20" />
@@ -264,6 +321,7 @@ function RiskScoresPage({ onClose }) {
                     onFilterUserChange={setFilterUser}
                     onCreateClick={handleCreateClick}
                     userRole={role}
+                    users={users}
                 />
 
                 {/* Risk Scores Table */}
@@ -273,17 +331,21 @@ function RiskScoresPage({ onClose }) {
                             Risk Score Assessments
                         </h2>
                     </div>
-                    <RiskScoresTable
-                        riskScores={visibleRiskScores}
-                        searchQuery={searchQuery}
-                        filterUser={filterUser}
-                        onView={handleView}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        currentPage={currentPage}
-                        onPageChange={setCurrentPage}
-                        userRole={role}
-                    />
+                    {loading ? (
+                        <div className="p-12 text-center text-slate-400">
+                            Loading risk scores...
+                        </div>
+                    ) : (
+                        <RiskScoresTable
+                            riskScores={riskScores}
+                            onView={handleView}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            currentPage={currentPage}
+                            onPageChange={setCurrentPage}
+                            userRole={role}
+                        />
+                    )}
                 </div>
             </div>
 
@@ -292,9 +354,15 @@ function RiskScoresPage({ onClose }) {
                 isOpen={isUploadModalOpen}
                 formData={uploadForm}
                 onFormChange={setUploadForm}
+                users={users}
                 onClose={() => {
                     setIsUploadModalOpen(false);
-                    setUploadForm({ user_name: "", score: "", rationale: "" });
+                    setUploadForm({
+                        user_id: "",
+                        user_name: "",
+                        score: "",
+                        rationale: "",
+                    });
                 }}
                 onSubmit={handleUploadSubmit}
             />

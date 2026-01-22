@@ -21,7 +21,7 @@ function AuditLogsActionBar({
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
                     <input
                         type="text"
-                        placeholder="Search by Admin, Action, or Target..."
+                        placeholder="Search by admin name, target ID, or target type..."
                         value={searchQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
                         className="w-full pl-10 pr-4 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -34,14 +34,20 @@ function AuditLogsActionBar({
                     <div className="relative">
                         <select
                             value={filterAction}
-                            onChange={(e) => onFilterActionChange(e.target.value)}
+                            onChange={(e) =>
+                                onFilterActionChange(e.target.value)
+                            }
                             className="appearance-none bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 pr-10 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                         >
                             <option value="all" className="bg-slate-800">
                                 All Actions
                             </option>
                             {uniqueActions.map((action) => (
-                                <option key={action} value={action} className="bg-slate-800">
+                                <option
+                                    key={action}
+                                    value={action}
+                                    className="bg-slate-800"
+                                >
                                     {action}
                                 </option>
                             ))}

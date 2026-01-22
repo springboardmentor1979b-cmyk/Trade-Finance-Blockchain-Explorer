@@ -1,10 +1,14 @@
-from fastapi import APIRouter, Depends
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
-from src.db.database import get_session
+
 from src.Auth.dependency import get_current_user, role_required
+from src.db.database import get_session
 from src.db.models import Users
-from .service import AuditLogService
+
 from .schemas import AuditLogCreate, AuditLogResponse
+from .service import AuditLogService
 
 audit_logs_router = APIRouter()
 
@@ -21,10 +25,15 @@ def create_audit_log(
 
 @audit_logs_router.get("/", response_model=list[AuditLogResponse])
 def get_all_audit_logs(
+    search: Optional[str] = Query(None, description="Search by admin name or target"),
+    action: Optional[str] = Query(None, description="Filter by action type"),
+    target_type: Optional[str] = Query(None, description="Filter by target type"),
     db: Session = Depends(get_session),
     role_check: None = Depends(role_required(["admin", "auditor"])),
 ) -> list[AuditLogResponse]:
-    return AuditLogService.get_all_audit_logs(db)
+    return AuditLogService.get_all_audit_logs(
+        db, search=search, action=action, target_type=target_type
+    )
 
 
 @audit_logs_router.get("/my", response_model=list[AuditLogResponse])

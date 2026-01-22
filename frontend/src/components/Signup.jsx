@@ -1,9 +1,13 @@
 import Card from "./ui/Card.jsx";
 import { Link, useNavigate } from "react-router-dom";
 import React, { useState, useEffect, useCallback } from "react";
-import api from "../api/axios.js";
+import {
+    authService,
+    getErrorMessage,
+    showSuccessToast,
+    showErrorToast,
+} from "../api/services.js";
 import { Eye, EyeClosed } from "lucide-react";
-import toast from "react-hot-toast";
 import RoleSelect from "./ui/Select.jsx";
 
 function Signup() {
@@ -46,17 +50,17 @@ function Signup() {
         const timer = setTimeout(async () => {
             try {
                 setLoadingEmailCheck(true);
-
-                const res = await api.get(
-                    `/api/auth/check-email?email=${email}`
-                );
-                if (res.data.exists) {
-                    toast.error("Email is already registered");
+                const res = await authService.checkEmail(email);
+                if (res.exists) {
+                    showErrorToast(
+                        { message: "Email is already registered" },
+                        "Email is already registered",
+                    );
                 } else {
-                    toast.success("Email is available");
+                    showSuccessToast("Email is available");
                 }
             } catch (err) {
-                toast.error("Error checking email");
+                showErrorToast(err, "Error checking email");
             } finally {
                 setLoadingEmailCheck(false);
             }
@@ -82,20 +86,17 @@ function Signup() {
         setError("");
 
         try {
-            const response = await api.post("/api/auth/register", {
+            await authService.register({
                 name,
                 org_name,
                 role,
                 email,
                 password,
             });
-            toast.success("Signup successful! Please log in.");
+            showSuccessToast("Signup successful! Please log in.");
             navigate("/login");
         } catch (err) {
-            setError(
-                err?.response?.data?.message ||
-                    "Signup failed. Please try again."
-            );
+            setError(getErrorMessage(err, "Signup failed. Please try again."));
         } finally {
             cleanUpForm();
         }

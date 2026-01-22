@@ -36,12 +36,12 @@ Note:
 """
 
 import time
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Response
 from sqlmodel import Session, select
-from datetime import datetime, timedelta, timezone
 
-from src.db.models import Users, PasswordResetTokens
+from src.db.models import PasswordResetTokens, Users
 from src.db.redis import add_jti_blocklist
 from src.errors import (
     InvalidCredentials,
@@ -53,15 +53,15 @@ from src.errors import (
     UserNotFound,
 )
 
-from .schemas import UserCreateModel, UserLoginModel, UserEmailModel
+from .schemas import UserCreateModel, UserEmailModel, UserLoginModel
 from .utils import (
     JWTHandler,
+    generate_otp,
     hash_password,
     validate_email,
     validate_password,
-    verify_password,
-    generate_otp,
     verify_otp,
+    verify_password,
 )
 
 
@@ -478,3 +478,16 @@ class authService:
         db.commit()
         db.refresh(user)
         return True
+
+    def get_all_users(self, db: Session):
+        """Retrieve all users from the database.
+
+        Returns a list of all registered users for admin/auditor selection.
+
+        Args:
+            db (Session): SQLModel database session for executing queries.
+
+        Returns:
+            list[Users]: List of all user objects in the database.
+        """
+        return db.exec(select(Users)).all()

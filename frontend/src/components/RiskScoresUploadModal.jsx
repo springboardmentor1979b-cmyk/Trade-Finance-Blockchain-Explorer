@@ -7,16 +7,17 @@ function RiskScoresUploadModal({
     onFormChange,
     onClose,
     onSubmit,
+    users = [],
 }) {
     if (!isOpen) return null;
-
-    const users = ["Bank User", "Corporate User"];
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-slate-800 rounded-xl border border-white/10 max-w-md w-full p-6">
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-white">Create Risk Score</h2>
+                    <h2 className="text-xl font-bold text-white">
+                        Create Risk Score
+                    </h2>
                     <button
                         onClick={onClose}
                         className="p-2 hover:bg-white/10 rounded-lg transition-colors"
@@ -31,21 +32,31 @@ function RiskScoresUploadModal({
                             Select User
                         </label>
                         <select
-                            value={formData.user_name}
-                            onChange={(e) =>
+                            value={formData.user_id}
+                            onChange={(e) => {
+                                const selectedUser = users.find(
+                                    (u) => u.id.toString() === e.target.value,
+                                );
                                 onFormChange({
                                     ...formData,
-                                    user_name: e.target.value,
-                                })
-                            }
+                                    user_id: e.target.value,
+                                    user_name: selectedUser
+                                        ? selectedUser.name
+                                        : "",
+                                });
+                            }}
                             className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                             <option value="" className="bg-slate-800">
                                 Select User
                             </option>
                             {users.map((user) => (
-                                <option key={user} value={user} className="bg-slate-800">
-                                    {user}
+                                <option
+                                    key={user.id}
+                                    value={user.id}
+                                    className="bg-slate-800"
+                                >
+                                    {user.name} ({user.email}) - {user.role}
                                 </option>
                             ))}
                         </select>

@@ -73,7 +73,7 @@ class TradeTransactions(SQLModel, table=True):
         seller: Relationship to the Users model representing the seller.
     """
 
-    id: Optional[str] = Field(primary_key=True, default=None)
+    id: Optional[int] = Field(primary_key=True, default=None)
     amount: float
     currency: str
     status: TransactionStatusChoices = Field(default=TransactionStatusChoices.PENDING)
@@ -149,7 +149,7 @@ class RiskScores(SQLModel, table=True):
         user: Relationship to the Users model.
     """
 
-    id: Optional[str] = Field(primary_key=True, default=None)
+    id: Optional[int] = Field(primary_key=True, default=None)
     score: float
     rationale: str
     last_updated: datetime = Field(
@@ -179,7 +179,7 @@ class AuditLogs(SQLModel, table=True):
         admin: Relationship to the Users model representing the admin.
     """
 
-    id: Optional[str] = Field(primary_key=True, default=None)
+    id: Optional[int] = Field(primary_key=True, default=None)
     admin_id: int = Field(foreign_key="users.id")
     action: str
     target_type: str
