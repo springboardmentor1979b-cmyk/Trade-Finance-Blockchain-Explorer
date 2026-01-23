@@ -1,479 +1,619 @@
 # Trade Finance Blockchain Explorer
 
-A comprehensive full-stack Trade Finance application featuring a FastAPI backend with JWT authentication, Redis-based token blocklist, and a React + Vite frontend. This project provides a robust authentication system with role-based access control, document management, and trade chain functionality supporting multiple user roles including Bank, Corporate, Auditor, and Admin.
+<div align="center">
 
-## Features
+![FastAPI](https://img.shields.io/badge/FastAPI-0.122.0-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-19.2.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-Alpine-DC382D?style=for-the-badge&logo=redis&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.1.17-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
 
-### Backend
+**A comprehensive full-stack Trade Finance platform with blockchain-inspired immutable ledger tracking, document management, risk assessment, and multi-role access control.**
 
--   **FastAPI** with **SQLModel** on PostgreSQL (no SQLite fallback)
--   **JWT auth** with short-lived access tokens in localStorage and refresh tokens in httpOnly cookies
--   **Redis blocklist** for token revocation and logout safety
--   **RBAC** for Bank, Corporate, Auditor, and Admin roles across auth, trade chain, and ledger routes
--   **Trade Chain module** storing files on disk (`uploads/documents`) with SHA-256 hashing and duplicate detection
--   **Ledger module** for immutable document actions with pagination and rich filtering
--   **Password security & recovery** with Argon2 hashing and OTP-based reset flow
--   **CORS + TrustedHost** middleware tuned for the Vite frontend
--   **Centralized error handling** and startup health checks for DB and Redis
+[Features](#-features) • [Quick Start](#-quick-start) • [API Docs](#-api-documentation) • [Architecture](#-architecture)
 
-### Frontend
+</div>
 
--   **React 19 + Vite** single-page app with protected routing
--   **Axios** client with automatic token refresh and global error handling
--   **Auth context** that persists access tokens, fetches `/api/auth/me`, and handles logout
--   **Dashboard landing** plus protected **/dashboard** document console
--   **Document workflows**: upload (Bank/Corporate), admin/auditor oversight, view, edit, delete, download
--   **Password flows**: signup, login, forgot-password/OTP, reset-password screens
+---
 
-## Prerequisites
+## 📋 Table of Contents
 
--   **Python** 3.9 or higher
--   **Node.js** 16 or higher
--   **PostgreSQL** 12+ (required; app uses PostgreSQL connection only)
--   **Redis** 6+ (required for token blocklist)
--   **Docker** & **Docker Compose**
+- [Overview](#-overview)
+- [Features](#-features)
+- [Architecture](#-architecture)
+- [Quick Start](#-quick-start)
+- [Environment Configuration](#-environment-configuration)
+- [API Endpoints](#-api-endpoints)
+- [Database Models](#-database-models)
+- [User Roles & Permissions](#-user-roles--permissions)
+- [Frontend Structure](#-frontend-structure)
+- [Testing](#-testing)
+- [Security](#-security)
+- [Troubleshooting](#-troubleshooting)
+- [Contributing](#-contributing)
+- [License](#-license)
 
-## Setup
+---
 
-1. **Clone & create env**
+## 🌟 Overview
 
-```bash
-git clone <repo-url>
-cd Infyspringboard
-python -m venv .venv
-.venv\Scripts\activate  # Windows
-# source .venv/bin/activate  # macOS/Linux
+Trade Finance Blockchain Explorer is a modern, enterprise-grade trade finance management system designed to streamline document workflows, transaction tracking, and compliance auditing. Built with a FastAPI backend and React frontend, it provides:
+
+- **Immutable Ledger Tracking**: Blockchain-inspired audit trail for all document actions
+- **Multi-Party Support**: Distinct workflows for Banks, Corporates, Auditors, and Admins
+- **Secure Authentication**: JWT with Redis-backed token blocklist for immediate revocation
+- **Risk Assessment**: Automated risk scoring with rationale tracking
+- **Comprehensive Auditing**: Full administrative action logging for compliance
+
+---
+
+## ✨ Features
+
+### Backend Capabilities
+
+| Feature                       | Description                                                   |
+| ----------------------------- | ------------------------------------------------------------- |
+| **FastAPI + SQLModel**        | High-performance async API with PostgreSQL integration        |
+| **JWT Authentication**        | Access tokens (10 min) + httpOnly refresh cookies (7 days)    |
+| **Redis Token Blocklist**     | Immediate token revocation on logout with JTI tracking        |
+| **Role-Based Access Control** | Fine-grained permissions for Bank, Corporate, Auditor, Admin  |
+| **Trade Chain Module**        | Document upload with SHA-256 hashing and duplicate detection  |
+| **Ledger Module**             | Immutable action tracking with pagination and filtering       |
+| **Transaction Management**    | Buyer/seller trade transactions with status workflow          |
+| **Risk Scores**               | User risk assessment with score and rationale                 |
+| **Audit Logs**                | Complete administrative action history                        |
+| **Password Security**         | Argon2 hashing with OTP-based password reset                  |
+| **Startup Health Checks**     | Validates DB and Redis connectivity before accepting requests |
+
+### Frontend Capabilities
+
+| Feature                    | Description                                                                        |
+| -------------------------- | ---------------------------------------------------------------------------------- |
+| **React 19 + Vite**        | Modern SPA with hot module replacement                                             |
+| **Protected Routing**      | Role-based route protection with automatic redirects                               |
+| **Auto Token Refresh**     | Seamless token rotation via Axios interceptors                                     |
+| **Glassmorphism UI**       | Modern glass-effect design with Tailwind CSS                                       |
+| **Toast Notifications**    | Real-time feedback with react-hot-toast                                            |
+| **Multi-Module Dashboard** | Unified interface for documents, ledger, transactions, risk scores, and audit logs |
+| **CRUD Modals**            | Upload, view, edit, and delete modals for each module                              |
+
+---
+
+## 🏗 Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              FRONTEND                                    │
+│  React 19 + Vite + Tailwind CSS + React Router + Axios                  │
+│  └── AuthContext → ProtectedRoute → Dashboard Components                │
+└──────────────────────────────────┬──────────────────────────────────────┘
+                                   │ HTTP/HTTPS (CORS enabled)
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         FASTAPI APPLICATION                              │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │
+│  │    Auth     │  │ Trade Chain │  │   Ledger    │  │ Transaction │     │
+│  │   Module    │  │   Module    │  │   Module    │  │   Module    │     │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘     │
+│         │                │                │                │            │
+│  ┌──────┴────────────────┴────────────────┴────────────────┴──────┐     │
+│  │                    SQLModel ORM Layer                          │     │
+│  └────────────────────────────┬───────────────────────────────────┘     │
+│  ┌─────────────┐  ┌───────────┴───────────┐  ┌─────────────────────┐    │
+│  │ Risk Scores │  │     Audit Logs        │  │  Startup Checks     │    │
+│  │   Module    │  │       Module          │  │  (DB + Redis)       │    │
+│  └─────────────┘  └───────────────────────┘  └─────────────────────┘    │
+└──────────────────────────────────┬──────────────────────────────────────┘
+                                   │
+           ┌───────────────────────┼───────────────────────┐
+           ▼                       ▼                       ▼
+    ┌─────────────┐         ┌─────────────┐         ┌─────────────┐
+    │ PostgreSQL  │         │    Redis    │         │   uploads/  │
+    │   (Data)    │         │ (Blocklist) │         │ (Documents) │
+    └─────────────┘         └─────────────┘         └─────────────┘
 ```
 
-2. **Install backend deps**
+### Project Structure
+
+```
+Trade-Finance-Blockchain-Explorer/
+├── src/                              # Backend application
+│   ├── __init__.py                  # FastAPI app initialization
+│   ├── config.py                    # Pydantic settings configuration
+│   ├── errors.py                    # Custom exception handlers
+│   ├── middleware.py                # CORS and TrustedHost middleware
+│   ├── startup_checks.py            # Database and Redis health checks
+│   │
+│   ├── Auth/                        # Authentication module
+│   │   ├── router.py                # Auth API endpoints
+│   │   ├── service.py               # Authentication business logic
+│   │   ├── schemas.py               # Request/response models
+│   │   ├── utils.py                 # JWT and password utilities
+│   │   └── dependency.py            # get_current_user, role_required
+│   │
+│   ├── db/                          # Database layer
+│   │   ├── database.py              # Engine and session management
+│   │   ├── models.py                # SQLModel ORM models
+│   │   ├── enums.py                 # Role, Document, Transaction enums
+│   │   ├── redis.py                 # Redis client for blocklist
+│   │   └── id_utils.py              # ID generation utilities
+│   │
+│   ├── trade_chain/                 # Document management module
+│   │   ├── router.py                # Upload/download endpoints
+│   │   ├── service.py               # Document business logic
+│   │   ├── schemas.py               # Trade chain models
+│   │   ├── utils.py                 # File hashing utilities
+│   │   └── validators.py            # Document validation
+│   │
+│   ├── ledger/                      # Immutable ledger module
+│   │   ├── router.py                # Ledger CRUD endpoints
+│   │   ├── service.py               # Ledger business logic
+│   │   └── schemas.py               # Ledger models
+│   │
+│   ├── trade_transaction/           # Transaction management module
+│   │   ├── router.py                # Transaction endpoints
+│   │   ├── service.py               # Transaction business logic
+│   │   ├── schemas.py               # Transaction models
+│   │   ├── utils.py                 # Transaction utilities
+│   │   └── validators.py            # Transaction validation
+│   │
+│   ├── risk_scores/                 # Risk assessment module
+│   │   ├── router.py                # Risk score endpoints
+│   │   ├── service.py               # Risk calculation logic
+│   │   └── schemas.py               # Risk score models
+│   │
+│   ├── audit_logs/                  # Audit logging module
+│   │   ├── router.py                # Audit log endpoints
+│   │   ├── service.py               # Audit logging logic
+│   │   └── schemas.py               # Audit log models
+│   │
+│   └── tests/                       # Test suite
+│       ├── conftest.py              # Pytest fixtures
+│       ├── test_auth.py             # Authentication tests
+│       ├── test_trade_chain.py      # Trade chain tests
+│       ├── test_ledger.py           # Ledger tests
+│       └── test_api_infra.py        # Infrastructure tests
+│
+├── frontend/                        # React frontend application
+│   ├── src/
+│   │   ├── App.jsx                  # Root component with layout
+│   │   ├── Home.jsx                 # Protected dashboard home
+│   │   ├── main.jsx                 # Entry point with routing
+│   │   ├── index.css                # Tailwind global styles
+│   │   │
+│   │   ├── api/                     # API client layer
+│   │   │   ├── axios.js             # Axios with interceptors
+│   │   │   └── services.js          # API service functions
+│   │   │
+│   │   ├── context/                 # React context providers
+│   │   │   ├── AuthContext.jsx      # Authentication state
+│   │   │   └── ProtectedRoute.jsx   # Route guards
+│   │   │
+│   │   ├── components/              # UI components
+│   │   │   ├── Dashboard.jsx        # Main landing page
+│   │   │   ├── Login.jsx            # Login form
+│   │   │   ├── Signup.jsx           # Registration form
+│   │   │   ├── ForgotPassword.jsx   # Password reset flow
+│   │   │   ├── Navbar.jsx           # Navigation header
+│   │   │   ├── Footer.jsx           # Page footer
+│   │   │   │
+│   │   │   ├── DocumentTable.jsx    # Trade chain documents
+│   │   │   ├── ActionBar.jsx        # Document actions
+│   │   │   ├── UploadModal.jsx      # Document upload
+│   │   │   ├── ViewModal.jsx        # Document viewer
+│   │   │   ├── EditModal.jsx        # Document editor
+│   │   │   │
+│   │   │   ├── LedgerPage.jsx       # Ledger management
+│   │   │   ├── LedgerTable.jsx      # Ledger entries table
+│   │   │   ├── LedgerActionBar.jsx  # Ledger actions
+│   │   │   │
+│   │   │   ├── TradeTransactionsPage.jsx   # Transaction management
+│   │   │   ├── TradeTransactionsTable.jsx  # Transactions table
+│   │   │   │
+│   │   │   ├── RiskScoresPage.jsx   # Risk score management
+│   │   │   ├── RiskScoresTable.jsx  # Risk scores table
+│   │   │   │
+│   │   │   ├── AuditLogsPage.jsx    # Audit log viewer
+│   │   │   ├── AuditLogsTable.jsx   # Audit logs table
+│   │   │   │
+│   │   │   └── ui/                  # Reusable UI primitives
+│   │   │       ├── Card.jsx
+│   │   │       ├── Select.jsx
+│   │   │       └── StateCard.jsx
+│   │   │
+│   │   └── hooks/                   # Custom React hooks
+│   │
+│   ├── index.html                   # HTML entry point
+│   ├── package.json                 # NPM dependencies
+│   └── vite.config.js               # Vite configuration
+│
+├── alembic/                         # Database migrations
+│   ├── env.py                       # Alembic environment
+│   └── versions/                    # Migration scripts
+│
+├── uploads/                         # Document storage
+│   └── documents/                   # Uploaded files
+│
+├── alembic.ini                      # Alembic configuration
+├── docker-compose.yml               # Docker services
+├── requirements.txt                 # Python dependencies
+└── README.md                        # This file
+```
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+| Requirement | Version | Purpose                 |
+| ----------- | ------- | ----------------------- |
+| Python      | 3.9+    | Backend runtime         |
+| Node.js     | 16+     | Frontend tooling        |
+| PostgreSQL  | 12+     | Primary database        |
+| Redis       | 6+      | Token blocklist         |
+| Docker      | Latest  | Container orchestration |
+
+### Installation
+
+#### 1. Clone and Setup Virtual Environment
+
+```bash
+git clone https://github.com/springboardmentor1979b-cmyk/Trade-Finance-Blockchain-Explorer.git
+cd Trade-Finance-Blockchain-Explorer
+
+# Create and activate virtual environment
+python -m venv .venv
+
+# Windows
+.venv\Scripts\activate
+
+# macOS/Linux
+source .venv/bin/activate
+```
+
+#### 2. Install Backend Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-3. **Configure environment** (PostgreSQL-only)
+#### 3. Configure Environment Variables
 
-Create `.env` in the repo root:
+Create a `.env` file in the project root:
 
 ```env
+# PostgreSQL Database
 POSTGRES_DATABASE_URL=postgresql://myuser:mypassword@localhost:5432/mydatabase
-JWT_SECRET_KEY=your-secret-key-here-change-in-production
-JWT_ALGORITHM=HS256
-REDIS_URL=redis://localhost:6379/0
-REDIS_HOST=localhost
-REDIS_PORT=6379
-```
-
-4. **Start services**
-
--   Local installations: ensure PostgreSQL and Redis are running.
--   Or use Docker for both:
-
-```bash
-docker-compose up -d
-```
-
-5. **Run migrations**
-
-```bash
-alembic upgrade head
-```
-
-6. **Start backend (dev)**
-
-```bash
-uvicorn src:app --reload --port 8000
-```
-
-7. **Start frontend (dev)**
-
-```bash
-cd frontend
-npm install
-echo "VITE_API_BASE_URL=http://localhost:8000" > .env  # optional; defaults to 8000
-npm run dev
-```
-
-Frontend runs on `http://localhost:5173` and talks to the backend at `http://localhost:8000`.
-
-## Project Structure
-
-```text
-Infyspringboard/
-├── src/                          # Backend application code
-│   ├── __init__.py              # FastAPI app initialization & router registration
-│   ├── config.py                # Environment configuration (Pydantic Settings)
-│   ├── errors.py                # Custom exception handlers
-│   ├── middleware.py            # CORS and TrustedHost middleware
-│   ├── startup_checks.py        # Database and Redis health checks
-│   ├── Auth/                    # Authentication module
-│   │   ├── router.py            # FastAPI routes for auth endpoints
-│   │   ├── service.py           # Authentication business logic
-│   │   ├── schemas.py           # Pydantic request/response models
-│   │   ├── utils.py             # JWT and password utilities
-│   │   ├── dependency.py        # FastAPI dependencies (get_current_user, role_required)
-│   │   └── __init__.py
-│   ├── db/                      # Database layer
-│   │   ├── database.py          # Database engine and session management
-│   │   ├── models.py            # SQLModel database models
-│   │   ├── enums.py             # Role, Document, Transaction, Ledger enums
-│   │   ├── redis.py             # Redis client for token blocklist
-│   │   └── __init__.py
-│   ├── trade_chain/             # Trade chain document management module
-│   │   ├── router.py            # Document upload/download endpoints
-│   │   ├── service.py           # Document management business logic
-│   │   ├── schemas.py           # Trade chain request/response models
-│   │   ├── utils.py             # Document hashing and file utilities
-│   │   └── __init__.py
-│   └── tests/                   # Backend test suite
-│       ├── conftest.py          # Pytest fixtures
-│       ├── test_auth.py         # Authentication endpoint tests
-│       └── __init__.py
-├── frontend/                    # React + Vite frontend
-│   ├── src/
-│   │   ├── App.jsx              # Main application component
-│   │   ├── Home.jsx             # Home page component
-│   │   ├── main.jsx             # Application entry point
-│   │   ├── index.css            # Global styles (Tailwind)
-│   │   ├── api/                 # API client configuration
-│   │   │   └── axios.js         # Axios instance with interceptors
-│   │   ├── components/          # Reusable React components
-│   │   │   ├── Login.jsx        # Login form component
-│   │   │   ├── Signup.jsx       # Registration form component
-│   │   │   ├── Dashboard.jsx    # Trade Finance Explorer dashboard
-│   │   │   ├── Navbar.jsx       # Navigation bar component
-│   │   │   ├── Footer.jsx       # Footer component
-│   │   │   ├── ActionBar.jsx    # Action buttons component
-│   │   │   ├── DocumentTable.jsx # Document listing table
-│   │   │   ├── StatsCard.jsx    # Statistics display card
-│   │   │   ├── EditModal.jsx    # Document edit modal
-│   │   │   ├── UploadModal.jsx  # Document upload modal
-│   │   │   ├── ViewModal.jsx    # Document view modal
-│   │   │   └── ui/              # UI components
-│   │   │       ├── Card.jsx
-│   │   │       ├── Select.jsx
-│   │   │       └── StateCard.jsx
-│   │   ├── context/             # React context for state management
-│   │   │   ├── AuthContext.jsx  # Authentication state provider
-│   │   │   └── ProtectedRoute.jsx # Route protection wrapper
-│   │   └── hooks/               # Custom React hooks
-│   │       └── useDocuments.js  # Document management hook
-│   ├── index.html
-│   ├── package.json
-│   └── vite.config.js
-├── alembic/                     # Database migration scripts
-│   ├── env.py
-│   ├── script.py.mako
-│   └── versions/                # Migration files
-├── alembic.ini                  # Alembic configuration
-├── docker-compose.yml           # Docker Compose configuration
-├── requirements.txt             # Python dependencies
-└── Readme.md                    # This file
-```
-
-## Authentication Flow
-
-1. **Check Email Availability** (`GET /api/auth/check-email`)
-
-    - Verify if email is already registered (public endpoint)
-    - Returns: availability status
-
-2. **Registration** (`POST /api/auth/register`)
-
-    - User provides: name, email, password, role, organization name
-    - Password validated for strength (8+ chars, uppercase, lowercase, digit, special)
-    - Backend hashes password using Argon2
-    - User record created in database
-    - Returns: user profile data
-
-3. **Login** (`POST /api/auth/login`)
-
-    - User provides: email and password
-    - Backend verifies credentials
-    - Returns: access token (10 min expiry) and sets refresh token cookie (7 day expiry)
-
-4. **Token Refresh** (`POST /api/auth/refresh`)
-
-    - Uses refresh token cookie
-    - Backend validates token and checks Redis blocklist
-    - Generates new access token and rotates refresh token
-
-5. **Get Current User** (`GET /api/auth/me`)
-
-    - Requires valid access token in Authorization header
-    - Returns: authenticated user's profile data
-
-6. **Logout** (`POST /api/auth/logout`)
-
-    - Revokes both access and refresh tokens via Redis blocklist
-    - Clears refresh cookie
-
-7. **Password Reset (OTP)**
-    - `POST /api/auth/forgotpassword` to request OTP
-    - `POST /api/auth/verify-otp` to validate OTP
-    - `POST /api/auth/reset-password` to set a new password
-
-## API Endpoints
-
-### Authentication Endpoints (`/api/auth`)
-
-| Method | Endpoint          | Description                                   | Auth Required           |
-| ------ | ----------------- | --------------------------------------------- | ----------------------- |
-| GET    | `/check-email`    | Check if email is available                   | No                      |
-| POST   | `/register`       | Register a new user                           | No                      |
-| POST   | `/login`          | Authenticate user and get access/refresh pair | No                      |
-| POST   | `/refresh`        | Rotate tokens using refresh cookie            | Refresh cookie required |
-| GET    | `/me`             | Get current user profile                      | Yes (access token)      |
-| POST   | `/logout`         | Revoke tokens and clear cookie                | Optional access token   |
-| POST   | `/forgotpassword` | Send OTP for password reset                   | No                      |
-| POST   | `/verify-otp`     | Verify password reset OTP                     | No                      |
-| POST   | `/reset-password` | Reset password after OTP verification         | No                      |
-
-### Trade Chain Endpoints (`/api/trade_chain`)
-
-| Method | Endpoint                  | Description                                     | Roles           |
-| ------ | ------------------------- | ----------------------------------------------- | --------------- |
-| POST   | `/upload`                 | Upload single or multiple documents (multipart) | Bank, Corporate |
-| GET    | `/document`               | Get documents for current user                  | Bank, Corporate |
-| GET    | `/documents`              | Get all users and their documents               | Admin, Auditor  |
-| PUT    | `/document/{document_id}` | Update a document file/type                     | Admin, Auditor  |
-| DELETE | `/document/{document_id}` | Delete a document                               | Admin, Auditor  |
-
-**Trade chain notes**
-
--   Upload payload: `files[]` + `doc_type` + `issued_at` (ISO datetime) as multipart form data.
--   Files are written to `uploads/documents`, hashed (SHA-256), and checked for duplicates.
--   Allowed types map to `DocumentTypeChoices`: letter_of_credit, invoice, bill_of_lading, purchase_order, certificate_of_origin, insurance_certificate.
-
-### Ledger Endpoints (`/api/ledger`)
-
-| Method | Endpoint              | Description                                                | Roles           |
-| ------ | --------------------- | ---------------------------------------------------------- | --------------- |
-| POST   | `/entry`              | Create a ledger entry for a document                       | Bank            |
-| GET    | `/records/admin`      | Paginated ledger records with filters (document, user etc) | Admin, Auditor  |
-| GET    | `/records/user`       | Paginated ledger records for the current user              | Bank, Corporate |
-| PATCH  | `/records/{recordId}` | Update ledger action                                       | Admin, Auditor  |
-| DELETE | `/records/{recordId}` | Delete a ledger entry                                      | Admin, Auditor  |
-
-### Root Endpoints
-
-| Method | Endpoint | Description          | Auth Required |
-| ------ | -------- | -------------------- | ------------- |
-| GET    | `/`      | API welcome endpoint | No            |
-
-## User Roles
-
-The system supports four user roles with different access levels:
-
-| Role          | Description                                         |
-| ------------- | --------------------------------------------------- |
-| **BANK**      | Financial institution users with banking privileges |
-| **CORPORATE** | Corporate entity users for business operations      |
-| **AUDITOR**   | Auditor users with read-only access for compliance  |
-| **ADMIN**     | Administrator users with full system access         |
-
-## Document Types
-
-The trade chain module supports the following document types:
-
-| Type                            | Description                             |
-| ------------------------------- | --------------------------------------- |
-| **Letter of Credit (LOC)**      | Financial instrument for trade payments |
-| **Invoice**                     | Commercial invoice for goods/services   |
-| **Bill of Lading**              | Shipping document for cargo             |
-| **Purchase Order (PO)**         | Buyer's order document                  |
-| **Certificate of Origin (COO)** | Document certifying goods' origin       |
-| **Insurance Certificate**       | Insurance coverage document             |
-
-## Key Technologies
-
-### Backend
-
--   **FastAPI 0.122.0** - Web framework
--   **SQLModel 0.0.27** - SQL database ORM
--   **Pydantic 2.12.5** - Data validation
--   **python-jose 3.5.0** - JWT token handling
--   **passlib 1.7.4** - Password hashing
--   **argon2-cffi 25.1.0** - Argon2 password algorithm
--   **psycopg2-binary 2.9.11** - PostgreSQL adapter
--   **Alembic 1.17.2** - Database migrations
--   **Uvicorn 0.38.0** - ASGI server
-
-### Frontend
-
--   **React 19.2.0** - UI library
--   **Vite 7.2.4** - Build tool
--   **React Router 7.9.6** - Client-side routing
--   **Tailwind CSS 4.1.17** - Styling
--   **Axios 1.13.2** - HTTP client
--   **Lucide React 0.555.0** - Icons
-
-## Environment Variables
-
-Create a `.env` file in the project root with the following variables:
-
-```env
-# Database Configuration
-POSTGRES_DATABASE_URL=postgresql://user:password@host:5432/database
 
 # JWT Configuration
 JWT_SECRET_KEY=your-super-secret-key-change-in-production
 JWT_ALGORITHM=HS256
 
-# Redis Configuration (required for token blocklist)
+# Redis Configuration
 REDIS_URL=redis://localhost:6379/0
 REDIS_HOST=localhost
 REDIS_PORT=6379
 ```
 
-## API Documentation
-
-Once the backend is running, visit:
-
--   **Swagger UI**: `http://localhost:8000/docs`
--   **ReDoc**: `http://localhost:8000/redoc`
-
-## Database
-
-### Database Models
-
-The application uses the following SQLModel database models:
-
-| Model                 | Description                                            |
-| --------------------- | ------------------------------------------------------ |
-| **Users**             | User accounts with authentication and role information |
-| **Documents**         | Trade documents with file references and hashes        |
-| **TradeTransactions** | Financial transactions between buyers and sellers      |
-| **LedgerEntries**     | Immutable audit trail for document actions             |
-| **RiskScores**        | User risk assessment scores and rationale              |
-| **AuditLogs**         | Administrative action logs for compliance              |
-
-### PostgreSQL (Production)
-
--   Requires PostgreSQL server
--   Configure `POSTGRES_DATABASE_URL` in `.env`
--   Use Docker Compose for easy setup
-
-### Redis (Required)
-
--   Required for token blocklist (JWT revocation)
--   Configure `REDIS_URL`, `REDIS_HOST`, and `REDIS_PORT` in `.env`
--   Startup checks verify Redis connectivity
-
-## Dependencies Management
-
-### Backend
-
-To update dependencies:
+#### 4. Start Infrastructure Services
 
 ```bash
-pip install --upgrade -r requirements.txt
+# Start PostgreSQL and Redis via Docker
+docker-compose up -d
 ```
 
-### Frontend
+This starts:
 
-To update dependencies:
+- **PostgreSQL 17** on port `5432`
+- **Redis Alpine** on port `6379`
 
-```bash
-cd frontend
-npm update
-```
-
-## Database Migrations
-
-### Create a new migration
-
-```bash
-alembic revision --autogenerate -m "Description of changes"
-```
-
-### Apply migrations
+#### 5. Run Database Migrations
 
 ```bash
 alembic upgrade head
 ```
 
-### Rollback migration
+#### 6. Start Backend Server
 
 ```bash
-alembic downgrade -1
+uvicorn src:app --reload --port 8000
 ```
 
-## Testing
+Backend available at `http://localhost:8000`
 
-### Backend Testing
-
-```bash
-# Run all tests with pytest
-pytest src/tests/
-
-# Run with verbose output
-pytest src/tests/ -v
-```
-
-### Backend Linting
-
-```bash
-pylint src/
-```
-
-### Frontend Linting
+#### 7. Start Frontend Development Server
 
 ```bash
 cd frontend
-npm run lint
+npm install
+npm run dev
 ```
 
-## Contributing
+Frontend available at `http://localhost:5173`
 
-1. Create a feature branch: `git checkout -b feature/your-feature`
-2. Commit changes: `git commit -m "Add your feature"`
-3. Push to branch: `git push origin feature/your-feature`
-4. Open a Pull Request
+---
 
-## License
+## ⚙ Environment Configuration
 
-This project is developed for Infosys Springboard internship and is not licensed for public use.
+| Variable                | Required | Description                  | Example                                    |
+| ----------------------- | -------- | ---------------------------- | ------------------------------------------ |
+| `POSTGRES_DATABASE_URL` | ✅       | PostgreSQL connection string | `postgresql://user:pass@localhost:5432/db` |
+| `JWT_SECRET_KEY`        | ✅       | Secret key for JWT signing   | `your-256-bit-secret`                      |
+| `JWT_ALGORITHM`         | ✅       | JWT signing algorithm        | `HS256`                                    |
+| `REDIS_URL`             | ✅       | Full Redis connection URL    | `redis://localhost:6379/0`                 |
+| `REDIS_HOST`            | ✅       | Redis server hostname        | `localhost`                                |
+| `REDIS_PORT`            | ✅       | Redis server port            | `6379`                                     |
 
-## Security Notes
+### Frontend Environment (Optional)
 
-1. **JWT Secret Key**: Change `JWT_SECRET_KEY` in production to a strong, unique value
-2. **Database Credentials**: Use strong passwords for database access
-3. **CORS Origins**: In production, specify exact origins instead of using wildcards
-4. **Password Requirements**: Minimum 8 characters with uppercase, lowercase, digit, and special character enforced
-5. **Token Expiry**: Access tokens expire after 10 minutes, refresh tokens after 7 days
-6. **Password Hashing**: Argon2 algorithm used for maximum security
-7. **Token Blocklist**: Redis-based JTI blocklist ensures immediate token revocation on logout
-8. **TrustedHost Middleware**: Validates request host headers for additional security
-9. **Startup Health Checks**: Application verifies database and Redis connectivity before accepting requests
+Create `frontend/.env`:
 
-## Troubleshooting
+```env
+VITE_API_BASE_URL=http://localhost:8000
+```
 
-### Database Connection Error
+---
 
--   Ensure PostgreSQL is running
--   Check `POSTGRES_DATABASE_URL` in `.env`
--   Verify database credentials
--   Run `alembic upgrade head` to apply migrations
+## 📡 API Endpoints
 
-### Redis Connection Error
+### Authentication (`/api/auth`)
 
--   Ensure Redis is running (`docker ps` to check)
--   Check `REDIS_URL`, `REDIS_HOST`, and `REDIS_PORT` in `.env`
--   Startup health check will fail if Redis is unavailable
+| Method | Endpoint          | Description                  | Auth              |
+| ------ | ----------------- | ---------------------------- | ----------------- |
+| `GET`  | `/check-email`    | Check email availability     | ❌                |
+| `POST` | `/register`       | Create new user account      | ❌                |
+| `POST` | `/login`          | Authenticate and get tokens  | ❌                |
+| `POST` | `/refresh`        | Rotate access/refresh tokens | 🍪 Refresh cookie |
+| `GET`  | `/me`             | Get current user profile     | ✅ Access token   |
+| `POST` | `/logout`         | Revoke tokens and logout     | ✅ Access token   |
+| `POST` | `/forgotpassword` | Request password reset OTP   | ❌                |
+| `POST` | `/verify-otp`     | Validate password reset OTP  | ❌                |
+| `POST` | `/reset-password` | Set new password after OTP   | ❌                |
 
-### CORS Error
+### Trade Chain Documents (`/api/trade_chain`)
 
--   Check `allowed_origins` in frontend API configuration
--   Ensure backend CORS middleware includes frontend URL
--   Verify middleware registration in `src/middleware.py`
+| Method   | Endpoint         | Description                  | Allowed Roles   |
+| -------- | ---------------- | ---------------------------- | --------------- |
+| `POST`   | `/upload`        | Upload documents (multipart) | Bank, Corporate |
+| `GET`    | `/document`      | Get own documents            | Bank, Corporate |
+| `GET`    | `/documents`     | Get all documents            | Admin, Auditor  |
+| `PUT`    | `/document/{id}` | Update document              | Admin, Auditor  |
+| `DELETE` | `/document/{id}` | Delete document              | Admin, Auditor  |
 
-### Token Expiry Issues
+**Document Types**: `letter_of_credit`, `invoice`, `bill_of_lading`, `purchase_order`, `certificate_of_origin`, `insurance_certificate`
 
--   Access tokens expire after 10 minutes, refresh using `/api/auth/refresh`
--   Refresh tokens expire after 7 days
--   Check token expiration times in `src/Auth/utils.py`
--   Verify token is not in Redis blocklist (logged out)
+### Ledger Entries (`/api/ledger`)
+
+| Method   | Endpoint         | Description                 | Allowed Roles   |
+| -------- | ---------------- | --------------------------- | --------------- |
+| `POST`   | `/entry`         | Create ledger entry         | Bank, Corporate |
+| `GET`    | `/records/admin` | Get all records (paginated) | Admin, Auditor  |
+| `GET`    | `/records/user`  | Get own records (paginated) | Bank, Corporate |
+| `PATCH`  | `/records/{id}`  | Update ledger action        | Admin, Auditor  |
+| `DELETE` | `/records/{id}`  | Delete ledger entry         | Admin, Auditor  |
+
+**Ledger Actions**: `issued`, `amended`, `shipped`, `received`, `paid`, `cancelled`, `verified`
+
+### Trade Transactions (`/api/transaction`)
+
+| Method  | Endpoint       | Description                             | Allowed Roles     |
+| ------- | -------------- | --------------------------------------- | ----------------- |
+| `POST`  | `/`            | Create transaction                      | Bank, Corporate   |
+| `GET`   | `/`            | List transactions (filtered, paginated) | All authenticated |
+| `GET`   | `/{id}`        | Get transaction details                 | All authenticated |
+| `PATCH` | `/{id}/status` | Update transaction status               | Admin, Auditor    |
+
+**Transaction Statuses**: `pending`, `in_progress`, `completed`, `disputed`
+
+### Risk Scores (`/api/risk_scores`)
+
+| Method   | Endpoint | Description                    | Allowed Roles     |
+| -------- | -------- | ------------------------------ | ----------------- |
+| `POST`   | `/`      | Create risk score              | Admin, Auditor    |
+| `GET`    | `/`      | Get all risk scores (filtered) | Admin, Auditor    |
+| `GET`    | `/my`    | Get own risk scores            | All authenticated |
+| `PATCH`  | `/{id}`  | Update risk score              | Admin, Auditor    |
+| `DELETE` | `/{id}`  | Delete risk score              | Admin, Auditor    |
+
+### Audit Logs (`/api/audit_logs`)
+
+| Method | Endpoint | Description                   | Allowed Roles  |
+| ------ | -------- | ----------------------------- | -------------- |
+| `POST` | `/`      | Create audit log              | Admin          |
+| `GET`  | `/`      | Get all audit logs (filtered) | Admin, Auditor |
+| `GET`  | `/my`    | Get own audit logs            | Admin          |
+
+---
+
+## 📊 Database Models
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│     Users       │     │   Documents     │     │ LedgerEntries   │
+├─────────────────┤     ├─────────────────┤     ├─────────────────┤
+│ id (PK)         │◄────│ owner_id (FK)   │     │ id (PK)         │
+│ email           │     │ id (PK)         │◄────│ document_id(FK) │
+│ name            │     │ doc_type        │     │ actor_id (FK)───┼──►Users
+│ password_hash   │     │ doc_number      │     │ action          │
+│ role            │     │ file_url        │     │ metadatav       │
+│ org_name        │     │ hash            │     │ created_at      │
+│ created_at      │     │ issued_at       │     └─────────────────┘
+└─────────────────┘     │ created_at      │
+        │               └─────────────────┘
+        │
+        ▼
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│TradeTransactions│     │  RiskScores     │     │   AuditLogs     │
+├─────────────────┤     ├─────────────────┤     ├─────────────────┤
+│ id (PK)         │     │ id (PK)         │     │ id (PK)         │
+│ buyer_id (FK)───┼──►  │ user_id (FK)────┼──►  │ admin_id (FK)───┼──►Users
+│ seller_id (FK)──┼──►  │ score           │     │ action          │
+│ amount          │     │ rationale       │     │ target_type     │
+│ currency        │     │ last_updated    │     │ target_id       │
+│ status          │     └─────────────────┘     │ timestamp       │
+│ created_at      │                             └─────────────────┘
+│ updated_at      │
+└─────────────────┘
+```
+
+---
+
+## 👥 User Roles & Permissions
+
+| Permission                | Bank | Corporate | Auditor | Admin |
+| ------------------------- | :--: | :-------: | :-----: | :---: |
+| Upload documents          |  ✅  |    ✅     |   ❌    |  ❌   |
+| View own documents        |  ✅  |    ✅     |   ❌    |  ❌   |
+| View all documents        |  ❌  |    ❌     |   ✅    |  ✅   |
+| Edit/Delete documents     |  ❌  |    ❌     |   ✅    |  ✅   |
+| Create ledger entries     |  ✅  |    ✅     |   ❌    |  ❌   |
+| View all ledger records   |  ❌  |    ❌     |   ✅    |  ✅   |
+| Manage ledger records     |  ❌  |    ❌     |   ✅    |  ✅   |
+| Create transactions       |  ✅  |    ✅     |   ❌    |  ❌   |
+| Update transaction status |  ❌  |    ❌     |   ✅    |  ✅   |
+| Manage risk scores        |  ❌  |    ❌     |   ✅    |  ✅   |
+| View audit logs           |  ❌  |    ❌     |   ✅    |  ✅   |
+| Create audit logs         |  ❌  |    ❌     |   ❌    |  ✅   |
+
+---
+
+## 🎨 Frontend Structure
+
+### Routes
+
+| Path              | Component      | Access    | Description                |
+| ----------------- | -------------- | --------- | -------------------------- |
+| `/`               | Dashboard      | Public    | Landing page with overview |
+| `/login`          | Login          | Public    | User login form            |
+| `/signup`         | Signup         | Public    | User registration form     |
+| `/forgotpassword` | ForgotPassword | Public    | Password reset flow        |
+| `/dashboard`      | Home           | Protected | Main application dashboard |
+| `/unauthorized`   | Unauthorised   | Public    | Access denied page         |
+
+### Authentication Flow
+
+```
+┌─────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  Login  │────►│ AuthContext │────►│ localStorage│────►│ ProtectedRt │
+│  Form   │     │   login()   │     │ access_token│     │   Check     │
+└─────────┘     └─────────────┘     └─────────────┘     └──────┬──────┘
+                                                                │
+     ┌────────────────────────────────────────────────────────┘
+     ▼
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│ 401 Response    │────►│ Axios Intercept │────►│ /api/auth/      │
+│ (Token Expired) │     │ Auto Refresh    │     │ refresh         │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+```
+
+---
+
+## 🧪 Testing
+
+### Backend Tests
+
+```bash
+# Run all tests
+pytest src/tests/ -v
+
+# Run specific test file
+pytest src/tests/test_auth.py -v
+
+# Run with coverage
+pytest src/tests/ --cov=src --cov-report=html
+```
+
+### Available Test Suites
+
+| File                             | Coverage                 |
+| -------------------------------- | ------------------------ |
+| `test_auth.py`                   | Authentication endpoints |
+| `test_trade_chain.py`            | Document management      |
+| `test_ledger.py`                 | Ledger operations        |
+| `test_api_infra.py`              | API infrastructure       |
+| `test_id_utils.py`               | ID generation utilities  |
+| `test_string_ids_integration.py` | String ID integration    |
+
+### Linting
+
+```bash
+# Backend
+pylint src/
+
+# Frontend
+cd frontend && npm run lint
+```
+
+---
+
+## 🔐 Security
+
+### Authentication Security
+
+| Feature               | Implementation                                      |
+| --------------------- | --------------------------------------------------- |
+| Password Hashing      | Argon2 (via argon2-cffi)                            |
+| Password Requirements | 8+ chars, uppercase, lowercase, digit, special char |
+| Access Token Expiry   | 10 minutes                                          |
+| Refresh Token Expiry  | 7 days                                              |
+| Token Storage         | Access in localStorage, Refresh in httpOnly cookie  |
+| Token Revocation      | Redis JTI blocklist                                 |
+
+### API Security
+
+| Feature          | Implementation                        |
+| ---------------- | ------------------------------------- |
+| CORS             | Restricted to `http://localhost:5173` |
+| TrustedHost      | Validates `localhost`, `127.0.0.1`    |
+| Rate Limiting    | Recommended for production            |
+| Input Validation | Pydantic models                       |
+
+### Production Checklist
+
+- [ ] Change `JWT_SECRET_KEY` to a strong, unique value
+- [ ] Update CORS `allow_origins` to production domain
+- [ ] Update TrustedHost `allowed_hosts` to production domain
+- [ ] Enable HTTPS
+- [ ] Implement rate limiting
+- [ ] Set up log aggregation
+- [ ] Configure proper database connection pooling
+
+---
+
+## 🔧 Troubleshooting
+
+### Database Connection Failed
+
+```bash
+# Check PostgreSQL is running
+docker ps | grep postgres
+
+# Verify connection string in .env
+# Ensure alembic migrations are applied
+alembic upgrade head
+```
+
+### Redis Connection Failed
+
+```bash
+# Check Redis is running
+docker ps | grep redis
+
+# Test Redis connection
+redis-cli ping  # Should return PONG
+```
+
+### CORS Errors
+
+- Verify `allow_origins` in `src/middleware.py` includes your frontend URL
+- Check browser console for specific CORS error details
+
+### Token Expired / 401 Errors
+
+- Access tokens expire after 10 minutes
+- Frontend automatically refreshes tokens
+- Check if refresh token is in Redis blocklist (logged out)
 
 ### Frontend Build Issues
 
@@ -486,14 +626,35 @@ npm run build
 
 ### Startup Health Check Failures
 
--   Application will not start if database or Redis is unavailable
--   Check logs for specific connection errors
--   Verify all environment variables are set correctly
-
-## Support
-
-For issues or questions, please open an issue on the GitHub repository.
+- Application blocks startup if PostgreSQL or Redis is unavailable
+- Check Docker containers are running
+- Verify environment variables are set correctly
 
 ---
 
-**Happy Coding!**
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+### Code Standards
+
+- Follow PEP 8 for Python code
+- Use ESLint configuration for JavaScript/React
+- Write tests for new features
+- Update documentation as needed
+
+---
+
+## 📄 License
+
+This project is developed for **Infosys Springboard Internship** and is not licensed for public use.
+
+---
+
+## 📬 Support
+
+For issues or questions, please [open an issue](https://github.com/springboardmentor1979b-cmyk/Trade-Finance-Blockchain-Explorer/issues) on the GitHub repository.
