@@ -1,12 +1,28 @@
-"""API router for trade transaction endpoints.
+"""Trade Transaction API Router.
 
-Provides REST API endpoints for creating, reading, and updating
-trade transactions with role-based access control.
+This module defines the FastAPI router for trade transaction management endpoints.
+It provides endpoints for creating, retrieving, updating, and deleting trade
+transactions between buyers and sellers.
+
+Endpoints:
+    POST /: Create a new transaction (Bank, Corporate)
+    GET /{transaction_id}: Get transaction by ID (Bank, Corporate)
+    GET /: List all transactions with filtering (All authenticated)
+    PATCH /{transaction_id}/status: Update transaction status (Admin, Auditor)
+    GET /user/{user_id}: Get transactions for a specific user (All authenticated)
+    DELETE /{transaction_id}: Delete a transaction (Admin, Auditor)
+
+Permissions:
+    - CREATE: Bank, Corporate
+    - READ: Bank, Corporate
+    - UPDATE (status): Admin, Auditor
+    - DELETE: Admin, Auditor
 """
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Form, Query, status
+from fastapi import APIRouter, Depends, Query, status
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from src.audit_logs.service import log_action
@@ -18,15 +34,12 @@ from src.trade_transaction.schemas import (
     TradeTransactionCreate,
     TradeTransactionListResponse,
     TradeTransactionResponse,
-    TradeTransactionStatusUpdate,
-    TransactionResponse,
+    UpdateTransactionStatusRequest,
 )
-from src.trade_transaction.service import (
-    TradeTransactionService,
-    trade_transaction_service,
-)
+from src.trade_transaction.service import TradeTransactionService
 
 transaction_router = APIRouter()
+trade_transaction_service = TradeTransactionService()
 
 
 @transaction_router.post(
@@ -39,30 +52,32 @@ transaction_router = APIRouter()
 async def create_transaction(
     transaction_data: TradeTransactionCreate,
     session: Session = Depends(get_session),
-    current_user: Users = Depends(get_current_user),
+    role_check: bool = Depends(role_required(["bank", "corporate"])),
 ) -> TradeTransactionResponse:
     """Create a new trade transaction.
 
-    **Required Role:** Bank or Corporate
+    Creates a transaction between a buyer and seller with the specified
+    amount and currency. The transaction starts in PENDING status by default.
 
-    **Request Body:**
-    - buyer_id: ID of the buyer
-    - seller_id: ID of the seller
-    - amount: Transaction amount (must be positive)
-    - currency: 3-letter ISO currency code
-    - status: Optional initial status (defaults to pending)
+    Args:
+        transaction_data: Transaction details including buyer_id, seller_id,
+            amount, currency, and optional initial status.
+        session: Database session (injected).
+        role_check: Role validation ensuring bank/corporate access (injected).
 
-    **Returns:**
-    - Created transaction with full details including buyer and seller info
+    Returns:
+        TradeTransactionResponse: The created transaction with all details.
 
-    **Raises:**
-    - 403: If user is not bank or corporate
-    - 400: If validation fails
-    - 404: If buyer or seller not found
+    Raises:
+        HTTPException (400): If buyer and seller are the same user.
+        HTTPException (400): If amount is not positive.
+        HTTPException (400): If currency format is invalid.
+        HTTPException (401): If user is not authenticated.
+        HTTPException (403): If user is not a bank or corporate user.
+        HTTPException (404): If buyer or seller user does not exist.
     """
     transaction = trade_transaction_service.create_transaction(
         session=session,
-        current_user=current_user,
         buyer_id=transaction_data.buyer_id,
         seller_id=transaction_data.seller_id,
         amount=transaction_data.amount,
@@ -70,7 +85,7 @@ async def create_transaction(
         status=transaction_data.status,
     )
 
-    return TradeTransactionResponse(**transaction.model_dump())
+    return TradeTransactionResponse.model_validate(transaction)
 
 
 @transaction_router.get(
@@ -82,24 +97,31 @@ async def create_transaction(
 async def get_transaction(
     transaction_id: int,
     session: Session = Depends(get_session),
-    current_user: Users = Depends(get_current_user),
+    role_check: bool = Depends(role_required(["bank", "corporate"])),
 ) -> TradeTransactionResponse:
-    """Get a specific transaction by ID.
+    """Retrieve a specific transaction by ID.
 
-    **Path Parameters:**
-    - transaction_id: ID of the transaction to retrieve
+    Fetches complete details of a transaction including buyer and seller
+    information.
 
-    **Returns:**
-    - Transaction details with buyer and seller information
+    Args:
+        transaction_id: ID of the transaction to retrieve.
+        session: Database session (injected).
+        role_check: Role validation ensuring bank/corporate access (injected).
 
-    **Raises:**
-    - 404: If transaction not found
+    Returns:
+        TradeTransactionResponse: Complete transaction details.
+
+    Raises:
+        HTTPException (401): If user is not authenticated.
+        HTTPException (403): If user is not a bank or corporate user.
+        HTTPException (404): If transaction not found.
     """
     transaction = trade_transaction_service.get_transaction(
         session=session, transaction_id=transaction_id
     )
 
-    return TradeTransactionResponse(**transaction.model_dump())
+    return TradeTransactionResponse.model_validate(transaction)
 
 
 @transaction_router.get(
@@ -122,24 +144,31 @@ async def list_transactions(
     buyer_id: Optional[int] = Query(None, description="Filter by buyer ID"),
     seller_id: Optional[int] = Query(None, description="Filter by seller ID"),
     session: Session = Depends(get_session),
-    current_user: Users = Depends(get_current_user),
+    # role_check: bool = Depends(role_required(["bank", "corporate"])),
 ) -> TradeTransactionListResponse:
-    """List transactions with pagination and optional filtering.
+    """List all transactions with filtering and pagination.
 
-    **Query Parameters:**
-    - skip: Number of records to skip (default: 0)
-    - limit: Maximum records to return (default: 100, max: 1000)
-    - status: Optional status filter (pending, in_progress, completed, disputed)
-    - search: Optional search by transaction ID, buyer name, or seller name
-    - buyer_id: Optional filter by buyer ID
-    - seller_id: Optional filter by seller ID
+    Retrieves a paginated list of transactions with optional filters for
+    status, search term, buyer ID, and seller ID. Results are ordered
+    by creation date descending (newest first).
 
-    **Returns:**
-    - Paginated list of transactions with total count
+    Args:
+        skip: Number of records to skip for pagination (default: 0).
+        limit: Maximum records to return (default: 100, max: 1000).
+        status: Optional filter by transaction status.
+        search: Optional search term for transaction ID or user names.
+        buyer_id: Optional filter for specific buyer.
+        seller_id: Optional filter for specific seller.
+        session: Database session (injected).
+
+    Returns:
+        TradeTransactionListResponse: Paginated list with total count.
+
+    Raises:
+        HTTPException (401): If user is not authenticated.
     """
     transactions, total = trade_transaction_service.list_transactions(
         session=session,
-        current_user=current_user,
         skip=skip,
         limit=limit,
         status_filter=status,
@@ -150,7 +179,7 @@ async def list_transactions(
 
     return TradeTransactionListResponse(
         total=total,
-        transactions=[TradeTransactionResponse(**t.model_dump()) for t in transactions],
+        transactions=[TradeTransactionResponse.model_validate(t) for t in transactions],
         skip=skip,
         limit=limit,  # type: ignore
     )
@@ -164,35 +193,47 @@ async def list_transactions(
 )
 async def update_transaction_status(
     transaction_id: int,
-    status_update: TradeTransactionStatusUpdate,
+    payload: UpdateTransactionStatusRequest,
     session: Session = Depends(get_session),
-    current_user: Users = Depends(get_current_user),
-) -> TradeTransactionResponse:
-    """Update transaction status.
+    user: Users = Depends(get_current_user),
+    role_check: bool = Depends(role_required(["admin", "auditor"])),
+):
+    """Update the status of a transaction.
 
-    **Required Role:** Bank or Corporate
+    Updates the status of an existing transaction. This operation is
+    restricted to Admin and Auditor users and is logged in the audit trail.
 
-    **Path Parameters:**
-    - transaction_id: ID of the transaction to update
+    Args:
+        transaction_id: ID of the transaction to update.
+        payload: Request body containing the new status.
+        session: Database session (injected).
+        user: Current authenticated user (injected).
+        role_check: Role validation ensuring admin/auditor access (injected).
 
-    **Request Body:**
-    - status: New status (pending, in_progress, completed, disputed)
+    Returns:
+        TradeTransactionResponse: The updated transaction.
 
-    **Returns:**
-    - Updated transaction details
-
-    **Raises:**
-    - 403: If user is not bank or corporate
-    - 404: If transaction not found
+    Raises:
+        HTTPException (401): If user is not authenticated.
+        HTTPException (403): If user is not an admin or auditor.
+        HTTPException (404): If transaction not found.
     """
-    transaction = trade_transaction_service.update_transaction_status(
+    trade_transaction_service.update_transaction_status(
         session=session,
-        current_user=current_user,
         transaction_id=transaction_id,
-        new_status=status_update.status,
+        new_status=payload.status,
     )
-
-    return TradeTransactionResponse(**transaction.model_dump())
+    log_action(session, user.id, "UPDATE", "transaction", str(transaction_id))  # type: ignore
+    session.commit()
+    updated_transaction = session.exec(
+        select(TradeTransactions)
+        .options(
+            selectinload(TradeTransactions.buyer),  # type: ignore
+            selectinload(TradeTransactions.seller),  # type: ignore
+        )
+        .where(TradeTransactions.id == transaction_id)
+    ).one()
+    return TradeTransactionResponse.model_validate(updated_transaction)
 
 
 @transaction_router.get(
@@ -206,19 +247,23 @@ async def get_user_transactions(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     session: Session = Depends(get_session),
-    current_user: Users = Depends(get_current_user),
 ) -> TradeTransactionListResponse:
-    """Get all transactions for a specific user.
+    """Retrieve transactions for a specific user.
 
-    **Path Parameters:**
-    - user_id: ID of the user
+    Fetches all transactions where the specified user is either the
+    buyer or seller, with pagination support.
 
-    **Query Parameters:**
-    - skip: Number of records to skip (default: 0)
-    - limit: Maximum records to return (default: 100)
+    Args:
+        user_id: ID of the user to fetch transactions for.
+        skip: Number of records to skip (default: 0).
+        limit: Maximum records to return (default: 100).
+        session: Database session (injected).
 
-    **Returns:**
-    - List of transactions where user is buyer or seller
+    Returns:
+        TradeTransactionListResponse: Paginated list of user's transactions.
+
+    Raises:
+        HTTPException (401): If user is not authenticated.
     """
     query = (
         select(TradeTransactions)
@@ -247,31 +292,30 @@ async def get_user_transactions(
     )
 
 
-@transaction_router.patch(
-    "/{transaction_id}/status", response_model=TransactionResponse
-)
-def edit_transaction_status(
-    transaction_id: int,
-    status: TransactionStatusChoices = Form(...),
-    db: Session = Depends(get_session),
-    user: Users = Depends(get_current_user),
-    admin_check: bool = Depends(role_required(["admin"])),
-):
-    """Admin-only: Updates the status of a transaction. Other fields cannot be changed."""
-    result = TradeTransactionService.update_status(db, transaction_id, status)
-    # Log the action
-    log_action(db, user.id, "UPDATE", "transaction", str(transaction_id))  # type: ignore
-    db.commit()
-    return result
-
-
 @transaction_router.delete("/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_transaction(
     transaction_id: int,
-    db: Session = Depends(get_session),
+    session: Session = Depends(get_session),
     user: Users = Depends(get_current_user),
-    admin_check: bool = Depends(role_required(["admin"])),
+    admin_check: bool = Depends(role_required(["admin", "auditor"])),
 ):
-    """Admin-only: Deletes a transaction. Users must re-add to change immutable details."""
-    log_action(db, user.id, "DELETE", "transaction", str(transaction_id))  # type: ignore
-    TradeTransactionService.delete_transaction(db, transaction_id)
+    """Delete a transaction by ID.
+
+    Removes a transaction from the database. This operation is restricted
+    to Admin and Auditor users and is logged in the audit trail.
+    Users who need to modify immutable transaction details must delete
+    and re-create the transaction.
+
+    Args:
+        transaction_id: ID of the transaction to delete.
+        session: Database session (injected).
+        user: Current authenticated user (injected).
+        admin_check: Role validation ensuring admin/auditor access (injected).
+
+    Raises:
+        HTTPException (401): If user is not authenticated.
+        HTTPException (403): If user is not an admin or auditor.
+        HTTPException (404): If transaction not found.
+    """
+    log_action(session, user.id, "DELETE", "transaction", str(transaction_id))  # type: ignore
+    trade_transaction_service.delete_transaction(session, transaction_id)

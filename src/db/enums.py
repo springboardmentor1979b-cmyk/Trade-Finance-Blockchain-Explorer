@@ -1,3 +1,22 @@
+"""Database Enumerations Module.
+
+This module defines enum classes used throughout the application for
+type-safe, validated choices in database models and API schemas.
+
+Enumerations:
+    RoleChoices: User role types for role-based access control.
+    DocumentTypeChoices: Types of trade documents supported.
+    TransactionStatusChoices: Lifecycle statuses for transactions.
+    LedgerActionChoices: Actions recorded in the ledger.
+
+Usage:
+    from src.db.enums import RoleChoices, DocumentTypeChoices
+
+    # Use in SQLModel/Pydantic models
+    role: RoleChoices = RoleChoices.BANK
+    doc_type: DocumentTypeChoices = DocumentTypeChoices.LOC
+"""
+
 from enum import Enum
 
 

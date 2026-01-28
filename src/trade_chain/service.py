@@ -30,8 +30,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
-from src.db.enums import DocumentTypeChoices
-from src.db.models import Documents, Users
+from src.db.enums import DocumentTypeChoices, LedgerActionChoices
+from src.db.models import Documents, LedgerEntries, Users
 from src.errors import (
     DocumentDeleteError,
     DocumentNotFound,
@@ -190,6 +190,17 @@ class TradeChainService:
             for doc in documents:
                 db.refresh(doc)
 
+            # Auto-create ledger entries for each uploaded document
+            for doc in documents:
+                ledger_entry = LedgerEntries(
+                    document_id=doc.id,
+                    action=LedgerActionChoices.ISSUED,
+                    actor_id=owner_id,
+                    metadatav={"auto_created": True, "source": "document_upload"},
+                )  # type: ignore
+                db.add(ledger_entry)
+            db.commit()
+
             return documents
 
         except SQLAlchemyError:
@@ -268,65 +279,35 @@ class TradeChainService:
     @staticmethod
     def edit_document(
         document_id: int,
-        file: UploadFile,
         doc_type: DocumentTypeChoices,
         db: Session,
     ) -> Documents:
-        """Update an existing document's file owned by a specific user.
+        """Update an existing document's type.
 
-        Validates the new file, saves it to disk, updates the database record,
-        and removes the old file from disk. Only the document owner can update
-        their own documents.
+        Updates only the document type field. File and other metadata remain unchanged.
 
         Args:
             document_id: The primary key ID of the document to update.
-            file: The new uploaded file from the HTTP request.
-            user: The authenticated user requesting the update.
+            doc_type: The new document type to set.
             db: SQLModel database session for database operations.
+
         Returns:
             Documents: The updated Documents record.
+
         Raises:
-            HTTPException: 404 if document not found or not owned by user.
-            HTTPException: 400 if no file selected or invalid file extension.
-            HTTPException: 500 if file upload or database update fails.
+            HTTPException: 404 if document not found.
         """
-        if not file.filename:
-            raise DocumentNotUploaded()
-
-        if not file_validator.validate_file_extension(file):
-            raise InvalidDocumentFormat()
-
         statement = select(Documents).where(Documents.id == document_id)
         document = db.exec(statement).first()
         if not document:
             raise DocumentNotFound()
 
-        unique_filename = f"{uuid.uuid4()}_{file.filename}"
-        destination = UPLOAD_FOLDER / unique_filename
+        document.doc_type = doc_type
+        db.add(document)
+        db.commit()
+        db.refresh(document)
 
-        try:
-            with open(destination, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
-
-            old_file_path = Path(document.file_url)
-
-            document.file_url = str(destination)
-            document.doc_type = doc_type
-            document.hash = generate_document_hash(str(destination))
-
-            db.add(document)
-            db.commit()
-            db.refresh(document)
-
-            if old_file_path.exists():
-                old_file_path.unlink(missing_ok=True)
-
-            return document
-
-        except Exception as e:
-            if destination.exists():
-                destination.unlink(missing_ok=True)
-            raise DocumentUploadError() from e
+        return document
 
     @staticmethod
     def delete_document(

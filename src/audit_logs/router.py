@@ -1,3 +1,15 @@
+"""Audit Logs API Router.
+
+This module defines the FastAPI router for audit log endpoints.
+It provides endpoints for creating, retrieving, and filtering audit logs
+that track administrative actions within the system.
+
+Endpoints:
+    POST /: Create a new audit log entry (Admin only)
+    GET /: Get all audit logs with optional filtering (Admin, Auditor)
+    GET /my: Get audit logs for the current admin user (Admin only)
+"""
+
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -20,7 +32,25 @@ def create_audit_log(
     user: Users = Depends(get_current_user),
     role_check: None = Depends(role_required(["admin"])),
 ) -> AuditLogResponse:
-    return AuditLogService.create_audit_log(log_data, user.id, db)
+    """Create a new audit log entry.
+
+    Records an administrative action for compliance and audit purposes.
+    Only admin users can manually create audit log entries.
+
+    Args:
+        log_data: The audit log data containing action, target_type, and target_id.
+        db: Database session (injected).
+        user: Current authenticated user (injected).
+        role_check: Role validation ensuring admin access (injected).
+
+    Returns:
+        AuditLogResponse: The created audit log entry with all details.
+
+    Raises:
+        HTTPException (401): If user is not authenticated.
+        HTTPException (403): If user is not an admin.
+    """
+    return AuditLogService.create_audit_log(log_data, user.id, db)  # type: ignore
 
 
 @audit_logs_router.get("/", response_model=list[AuditLogResponse])
@@ -31,6 +61,26 @@ def get_all_audit_logs(
     db: Session = Depends(get_session),
     role_check: None = Depends(role_required(["admin", "auditor"])),
 ) -> list[AuditLogResponse]:
+    """Retrieve all audit logs with optional filtering.
+
+    Returns a list of all audit logs in the system, optionally filtered
+    by search term, action type, or target type. Results are ordered
+    by timestamp in descending order (newest first).
+
+    Args:
+        search: Optional search term to filter by admin name or target ID.
+        action: Optional filter for specific action types (CREATE, UPDATE, DELETE, etc.).
+        target_type: Optional filter for specific target types (document, ledger, etc.).
+        db: Database session (injected).
+        role_check: Role validation ensuring admin/auditor access (injected).
+
+    Returns:
+        list[AuditLogResponse]: List of matching audit log entries.
+
+    Raises:
+        HTTPException (401): If user is not authenticated.
+        HTTPException (403): If user is not an admin or auditor.
+    """
     return AuditLogService.get_all_audit_logs(
         db, search=search, action=action, target_type=target_type
     )
@@ -42,4 +92,21 @@ def get_my_audit_logs(
     user: Users = Depends(get_current_user),
     role_check: None = Depends(role_required(["admin"])),
 ) -> list[AuditLogResponse]:
-    return AuditLogService.get_audit_logs_by_admin(user.id, db)
+    """Retrieve audit logs for the current admin user.
+
+    Returns all audit logs created by the currently authenticated admin,
+    ordered by timestamp in descending order (newest first).
+
+    Args:
+        db: Database session (injected).
+        user: Current authenticated user (injected).
+        role_check: Role validation ensuring admin access (injected).
+
+    Returns:
+        list[AuditLogResponse]: List of audit logs created by the current user.
+
+    Raises:
+        HTTPException (401): If user is not authenticated.
+        HTTPException (403): If user is not an admin.
+    """
+    return AuditLogService.get_audit_logs_by_admin(user.id, db)  # type: ignore

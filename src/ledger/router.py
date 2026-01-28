@@ -1,3 +1,17 @@
+"""Ledger API Router.
+
+This module defines the FastAPI router for ledger entry endpoints.
+It provides endpoints for creating, retrieving, updating, and deleting
+immutable ledger entries that track document actions.
+
+Endpoints:
+    POST /entry: Create a new ledger entry (Bank, Corporate)
+    GET /records/admin: Get all ledger records with filtering (Admin, Auditor)
+    GET /records/user: Get current user's ledger records (Bank, Corporate)
+    DELETE /records/{record_id}: Delete a ledger record (Admin, Auditor)
+    PATCH /records/{record_id}: Update ledger action (Admin, Auditor)
+"""
+
 from datetime import date
 
 from fastapi import APIRouter, Depends, Form, Query, status
@@ -64,6 +78,30 @@ def get_all_ledger_records_every_user(
     db: Session = Depends(get_session),
     role_check: None = Depends(role_required(["admin", "auditor"])),
 ):
+    """Retrieve all ledger records with filtering and pagination.
+
+    Returns a paginated list of all ledger records in the system,
+    with optional filters for document number, action, user name,
+    and date range.
+
+    Args:
+        page: Page number for pagination (default: 1).
+        page_size: Number of records per page (default: 25, max: 100).
+        document_number: Optional filter by document number (partial match).
+        action: Optional filter by action type.
+        user_name: Optional filter by user name (partial match).
+        start_date: Optional filter for records on or after this date.
+        end_date: Optional filter for records on or before this date.
+        db: Database session (injected).
+        role_check: Role validation ensuring admin/auditor access (injected).
+
+    Returns:
+        PaginatedLedgerResponse: Paginated list of ledger records.
+
+    Raises:
+        HTTPException (401): If user is not authenticated.
+        HTTPException (403): If user is not an admin or auditor.
+    """
     return LedgerService.get_all_ledger_records(
         db, page, page_size, document_number, action, user_name, start_date, end_date
     )
@@ -77,6 +115,26 @@ def get_user_ledger_records(
     user: Users = Depends(get_current_user),
     role_check: None = Depends(role_required(["bank", "corporate"])),
 ):
+    """Retrieve ledger records for the current user.
+
+    Returns a paginated list of ledger records where the current user
+    is the actor. Useful for bank and corporate users to track their
+    own document actions.
+
+    Args:
+        page: Page number for pagination (default: 1).
+        page_size: Number of records per page (default: 25, max: 100).
+        db: Database session (injected).
+        user: Current authenticated user (injected).
+        role_check: Role validation ensuring bank/corporate access (injected).
+
+    Returns:
+        PaginatedLedgerResponse: Paginated list of user's ledger records.
+
+    Raises:
+        HTTPException (401): If user is not authenticated.
+        HTTPException (403): If user is not a bank or corporate user.
+    """
     return LedgerService.get_user_ledger_records(db, page, page_size, user.id)  # type: ignore
 
 
@@ -87,8 +145,21 @@ def delete_record(
     user: Users = Depends(get_current_user),
     role_check: None = Depends(role_required(["admin", "auditor"])),
 ):
-    """
-    Delete a ledger record by its ID.
+    """Delete a ledger record by its ID.
+
+    Removes a ledger record from the database. This operation is
+    logged in the audit trail for compliance purposes.
+
+    Args:
+        record_id: ID of the ledger record to delete.
+        db: Database session (injected).
+        user: Current authenticated user (injected).
+        role_check: Role validation ensuring admin/auditor access (injected).
+
+    Raises:
+        HTTPException (401): If user is not authenticated.
+        HTTPException (403): If user is not an admin or auditor.
+        HTTPException (404): If ledger record not found.
     """
     res = LedgerService.delete_ledger_entry(record_id, db)
     if not res:
@@ -106,8 +177,27 @@ def update_record(
     user: Users = Depends(get_current_user),
     role_check: None = Depends(role_required(["admin", "auditor"])),
 ):
-    """
-    Update the action field of a ledger record. Restricted to Admin and Auditor users.
+    """Update the action field of a ledger record.
+
+    Updates only the action field of an existing ledger record.
+    This operation is restricted to Admin and Auditor users and
+    is logged in the audit trail for compliance purposes.
+
+    Args:
+        record_id: ID of the ledger record to update.
+        action: New action value (issued, amended, shipped, received,
+            paid, cancelled, verified).
+        db: Database session (injected).
+        user: Current authenticated user (injected).
+        role_check: Role validation ensuring admin/auditor access (injected).
+
+    Returns:
+        LedgerEntries: The updated ledger record.
+
+    Raises:
+        HTTPException (401): If user is not authenticated.
+        HTTPException (403): If user is not an admin or auditor.
+        HTTPException (404): If ledger record not found.
     """
     updated_record = LedgerService.edit_action(record_id, action, db)
 

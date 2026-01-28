@@ -23,7 +23,8 @@ function RiskScoresViewModal({ isOpen, riskScore, onClose }) {
                     <div className="p-3 bg-white/5 rounded-lg border border-white/10">
                         <p className="text-sm text-slate-400">ID</p>
                         <p className="text-white font-medium mt-1">
-                            {riskScore.id}
+                            RISK-{String(riskScore.id).padStart(3, "0")}-
+                            {new Date(riskScore.last_updated).getFullYear()}
                         </p>
                     </div>
 

@@ -108,10 +108,9 @@ function Home() {
         try {
             await tradeChainService.updateDocument(
                 selectedDocument.id,
-                uploadFile,
                 uploadForm.type,
             );
-            showSuccessToast("Document updated successfully");
+            showSuccessToast("Document type updated successfully");
             setIsEditModalOpen(false);
             resetForm();
             fetchDocuments(role);
@@ -398,8 +397,6 @@ function Home() {
                         uploadForm={uploadForm}
                         onFormChange={setUploadForm}
                         onSubmit={handleEditSubmit}
-                        uploadFile={uploadFile}
-                        onFileChange={setUploadFile}
                     />
                 </>
             )}

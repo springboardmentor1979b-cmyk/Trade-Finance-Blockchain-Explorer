@@ -68,6 +68,10 @@ function UploadModal({
                     <p className="text-slate-400 text-sm mt-1">
                         Upload a trade finance document to the blockchain
                     </p>
+                    <p className="text-green-400 text-xs mt-2 flex items-center gap-1">
+                        <span>✓</span> A ledger entry will be automatically
+                        created
+                    </p>
                 </div>
 
                 <form onSubmit={onSubmit} className="p-6 space-y-6">

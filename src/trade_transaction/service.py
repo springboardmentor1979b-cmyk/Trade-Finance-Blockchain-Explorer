@@ -1,33 +1,41 @@
-from datetime import datetime
+"""Trade Transaction Service Module.
+
+This module provides the business logic for trade transaction operations
+including creation, retrieval, updates, and deletion. Transactions represent
+trade agreements between buyers and sellers with full lifecycle management.
+
+Classes:
+    TradeTransactionService: Service class for transaction operations.
+"""
+
 from typing import Optional, Tuple
 
 from fastapi import HTTPException, status
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, func, or_, select
 
-from src.db.enums import RoleChoices, TransactionStatusChoices
+from src.db.enums import TransactionStatusChoices
 from src.db.models import TradeTransactions, Users
 from src.errors import DocumentNotFound
 
 
 class TradeTransactionService:
-    """Service for managing trade transactions with role-based validation."""
+    """Service class for trade transaction operations.
 
-    @staticmethod
-    def validate_transaction_creator(user: Users) -> None:
-        """Validate that user has permission to create transactions.
+    Provides methods for creating, retrieving, updating, and deleting
+    trade transactions. Includes validation helpers for business rules.
 
-        Args:
-            user: The user attempting to create a transaction.
-
-        Raises:
-            HTTPException: If user role is not bank or corporate.
-        """
-        allowed_roles = [RoleChoices.BANK, RoleChoices.CORPORATE]
-        if user.role not in allowed_roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only bank and corporate users can create trade transactions",
-            )
+    Methods:
+        validate_user_exists: Validate that a user exists.
+        validate_buyer_seller_different: Ensure buyer and seller are different.
+        validate_amount: Validate transaction amount is positive.
+        validate_currency: Validate currency code format.
+        create_transaction: Create a new transaction.
+        get_transaction: Retrieve a transaction by ID.
+        list_transactions: List transactions with filtering.
+        update_transaction_status: Update transaction status.
+        delete_transaction: Delete a transaction.
+    """
 
     @staticmethod
     def validate_user_exists(session: Session, user_id: int) -> Users:
@@ -103,7 +111,6 @@ class TradeTransactionService:
     def create_transaction(
         self,
         session: Session,
-        current_user: Users,
         buyer_id: int,
         seller_id: int,
         amount: float,
@@ -127,8 +134,6 @@ class TradeTransactionService:
         Raises:
             HTTPException: For validation failures or permission issues.
         """
-        # Validate creator has permission
-        self.validate_transaction_creator(current_user)
 
         # Validate transaction data
         self.validate_amount(amount)
@@ -180,7 +185,6 @@ class TradeTransactionService:
     def list_transactions(
         self,
         session: Session,
-        current_user: Users,
         skip: int = 0,
         limit: int = 100,
         status_filter: Optional[TransactionStatusChoices] = None,
@@ -192,7 +196,6 @@ class TradeTransactionService:
 
         Args:
             session: Database session.
-            current_user: User requesting the list.
             skip: Number of records to skip (pagination).
             limit: Maximum number of records to return.
             status_filter: Optional status to filter by.
@@ -203,11 +206,11 @@ class TradeTransactionService:
         Returns:
             Tuple[list[TradeTransactions], int]: List of transactions and total count.
         """
-        # Alias for buyer and seller joins
-        BuyerUser = Users
-        SellerUser = Users
 
-        query = select(TradeTransactions)
+        query = select(TradeTransactions).options(
+            selectinload(TradeTransactions.buyer),  # type: ignore
+            selectinload(TradeTransactions.seller),  # type: ignore
+        )
 
         # Apply status filter if provided
         if status_filter:
@@ -226,17 +229,17 @@ class TradeTransactionService:
             search_term = f"%{search}%"
             # Get buyer and seller IDs that match the search term
             buyer_ids = session.exec(
-                select(Users.id).where(Users.name.ilike(search_term))
+                select(Users.id).where(Users.name.ilike(search_term))  # type: ignore
             ).all()
             seller_ids = session.exec(
-                select(Users.id).where(Users.name.ilike(search_term))
+                select(Users.id).where(Users.name.ilike(search_term))  # type: ignore
             ).all()
 
             # Build search conditions
             search_conditions = [
-                TradeTransactions.id.cast(str).ilike(search_term),
-                TradeTransactions.buyer_id.in_(buyer_ids) if buyer_ids else False,
-                TradeTransactions.seller_id.in_(seller_ids) if seller_ids else False,
+                TradeTransactions.id.cast(str).ilike(search_term),  # type: ignore
+                TradeTransactions.buyer_id.in_(buyer_ids) if buyer_ids else False,  # type: ignore
+                TradeTransactions.seller_id.in_(seller_ids) if seller_ids else False,  # type: ignore
             ]
             # Filter out False values (when no matching IDs)
             search_conditions = [c for c in search_conditions if c is not False]
@@ -257,10 +260,9 @@ class TradeTransactionService:
     def update_transaction_status(
         self,
         session: Session,
-        current_user: Users,
         transaction_id: int,
         new_status: TransactionStatusChoices,
-    ) -> TradeTransactions:
+    ):
         """Update the status of a transaction.
 
         Args:
@@ -275,44 +277,43 @@ class TradeTransactionService:
         Raises:
             HTTPException: If transaction not found or permission denied.
         """
-        # Validate creator has permission
-        self.validate_transaction_creator(current_user)
 
-        transaction = self.get_transaction(session, transaction_id)
+        query = select(TradeTransactions).where(TradeTransactions.id == transaction_id)
+
+        transaction = (session.exec(query)).first()
+        if not transaction:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Transaction with id {transaction_id} not found",
+            )
 
         # Update status and timestamp
         transaction.status = new_status
-        transaction.updated_at = datetime.utcnow()
+        return transaction
 
-        session.add(transaction)
+    def delete_transaction(self, session: Session, transaction_id: int) -> None:
+        """Delete a transaction from the database.
+
+        Removes a transaction record. Used when users need to change
+        immutable transaction details (must delete and re-create).
+
+        Args:
+            session: Database session for the transaction.
+            transaction_id: ID of the transaction to delete.
+
+        Returns:
+            None: Returns nothing on successful deletion.
+
+        Raises:
+            DocumentNotFound: If transaction does not exist.
+
+        Example:
+            >>> service.delete_transaction(session, 123)
+        """
+        transaction = session.get(TradeTransactions, transaction_id)
+        if not transaction:
+            raise DocumentNotFound()
+
+        session.delete(transaction)
         session.commit()
-        session.refresh(transaction)
-
-        return transaction
-
-    @staticmethod
-    def update_status(db: Session, transaction_id: int, new_status: str):
-        """Updates ONLY the status of a specific transaction."""
-        transaction = db.get(TradeTransactions, transaction_id)
-        if not transaction:
-            raise DocumentNotFound()
-
-        transaction.status = new_status  # type: ignore
-        db.add(transaction)
-        db.commit()
-        db.refresh(transaction)
-        return transaction
-
-    @staticmethod
-    def delete_transaction(db: Session, transaction_id: int):
-        """Removes a transaction record from the database."""
-        transaction = db.get(TradeTransactions, transaction_id)
-        if not transaction:
-            raise DocumentNotFound()
-
-        db.delete(transaction)
-        db.commit()
         return None
-
-
-trade_transaction_service = TradeTransactionService()

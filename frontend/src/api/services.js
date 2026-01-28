@@ -163,19 +163,12 @@ export const tradeChainService = {
     },
 
     /**
-     * Update a document (admin/auditor)
+     * Update a document type (admin/auditor)
      */
-    updateDocument: async (documentId, file, docType) => {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("doc_type", docType);
-
+    updateDocument: async (documentId, docType) => {
         const response = await api.put(
             `/api/trade_chain/document/${documentId}`,
-            formData,
-            {
-                headers: { "Content-Type": "multipart/form-data" },
-            }
+            { doc_type: docType }
         );
         return response.data;
     },

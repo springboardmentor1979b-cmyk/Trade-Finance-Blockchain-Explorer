@@ -77,7 +77,10 @@ function RiskScoresTable({
                                                     3,
                                                     "0",
                                                 )}
-                                                -2024
+                                                -
+                                                {new Date(
+                                                    riskScore.last_updated,
+                                                ).getFullYear()}
                                             </span>
                                         </div>
                                     </td>

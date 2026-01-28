@@ -74,7 +74,10 @@ function AuditLogsTable({
                                                 3,
                                                 "0",
                                             )}
-                                            -2024
+                                            -
+                                            {new Date(
+                                                auditLog.timestamp,
+                                            ).getFullYear()}
                                         </span>
                                     </div>
                                 </td>

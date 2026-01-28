@@ -1,3 +1,16 @@
+"""Audit Logs Service Module.
+
+This module provides the business logic for audit log operations including
+creation, retrieval, and filtering. It also provides a utility function
+for other services to log actions.
+
+Classes:
+    AuditLogService: Service class with static methods for audit log operations.
+
+Functions:
+    log_action: Utility function for logging admin/auditor actions.
+"""
+
 from typing import Optional
 
 from sqlmodel import Session, or_, select
@@ -14,16 +27,28 @@ def log_action(
     target_type: str,
     target_id: str,
 ) -> None:
-    """
-    Utility function to create an audit log entry.
-    Used internally by other services to log admin/auditor actions.
+    """Create an audit log entry for tracking administrative actions.
+
+    This is the primary utility function for logging actions performed by
+    admin and auditor users. It is called by other services to maintain
+    an audit trail for compliance and debugging purposes.
 
     Args:
-        db: Database session
-        admin_id: ID of the user performing the action
-        action: Action being performed (CREATE, UPDATE, DELETE, VIEW, etc.)
-        target_type: Type of entity (risk_score, ledger, transaction, user, etc.)
-        target_id: ID of the target entity
+        db: Database session for the current transaction.
+        admin_id: ID of the user performing the action.
+        action: Action being performed (CREATE, UPDATE, DELETE, VIEW, etc.).
+        target_type: Type of entity being affected (risk_score, ledger,
+            transaction, user, document, etc.).
+        target_id: ID of the target entity as a string.
+
+    Note:
+        This function adds the audit log to the session but does NOT commit.
+        The calling function should handle the transaction commit to ensure
+        the audit log is saved atomically with the main operation.
+
+    Example:
+        >>> log_action(db, user.id, "UPDATE", "document", str(document_id))
+        >>> db.commit()  # Commit both the main operation and audit log
     """
     audit_log = AuditLogs(
         admin_id=admin_id,
@@ -36,10 +61,40 @@ def log_action(
 
 
 class AuditLogService:
+    """Service class for audit log operations.
+
+    Provides static methods for creating and retrieving audit logs.
+    All methods accept a database session for transaction control.
+
+    Methods:
+        create_audit_log: Create a new audit log entry.
+        get_all_audit_logs: Retrieve all audit logs with optional filtering.
+        get_audit_logs_by_admin: Retrieve audit logs for a specific admin.
+    """
+
     @staticmethod
     def create_audit_log(
         log_data: AuditLogCreate, admin_id: int, db: Session
     ) -> AuditLogResponse:
+        """Create a new audit log entry.
+
+        Args:
+            log_data: Pydantic schema containing action, target_type, and target_id.
+            admin_id: ID of the admin user creating the log entry.
+            db: Database session for the transaction.
+
+        Returns:
+            AuditLogResponse: The created audit log with all details including
+                the admin's name.
+
+        Example:
+            >>> log_data = AuditLogCreate(
+            ...     action="CREATE",
+            ...     target_type="document",
+            ...     target_id=1
+            ... )
+            >>> response = AuditLogService.create_audit_log(log_data, admin_id, db)
+        """
         audit_log = AuditLogs(
             admin_id=admin_id,
             action=log_data.action,
@@ -67,6 +122,28 @@ class AuditLogService:
         action: Optional[str] = None,
         target_type: Optional[str] = None,
     ) -> list[AuditLogResponse]:
+        """Retrieve all audit logs with optional filtering.
+
+        Fetches audit logs from the database with support for searching
+        by admin name or target, and filtering by action or target type.
+        Results are ordered by timestamp descending (newest first).
+
+        Args:
+            db: Database session for querying.
+            search: Optional search term to match against admin name,
+                target_id, or target_type (case-insensitive).
+            action: Optional exact match filter for action type.
+            target_type: Optional exact match filter for target type.
+
+        Returns:
+            list[AuditLogResponse]: List of matching audit log entries.
+
+        Example:
+            >>> # Get all UPDATE actions
+            >>> logs = AuditLogService.get_all_audit_logs(db, action="UPDATE")
+            >>> # Search for logs by admin name
+            >>> logs = AuditLogService.get_all_audit_logs(db, search="John")
+        """
         statement = select(AuditLogs).join(Users, AuditLogs.admin_id == Users.id)
 
         # Apply filters
@@ -104,6 +181,21 @@ class AuditLogService:
 
     @staticmethod
     def get_audit_logs_by_admin(admin_id: int, db: Session) -> list[AuditLogResponse]:
+        """Retrieve audit logs for a specific admin user.
+
+        Fetches all audit logs created by the specified admin user,
+        ordered by timestamp descending (newest first).
+
+        Args:
+            admin_id: ID of the admin user to filter by.
+            db: Database session for querying.
+
+        Returns:
+            list[AuditLogResponse]: List of audit logs created by the admin.
+
+        Example:
+            >>> my_logs = AuditLogService.get_audit_logs_by_admin(user.id, db)
+        """
         statement = (
             select(AuditLogs)
             .where(AuditLogs.admin_id == admin_id)

@@ -28,23 +28,6 @@ const documentIcons = {
     insurance_certificate: Shield,
 };
 
-// Status badge styles
-const statusStyles = {
-    pending: { bg: "bg-yellow-100", text: "text-yellow-800", icon: Clock },
-    in_progress: { bg: "bg-blue-100", text: "text-blue-800", icon: Activity },
-    completed: {
-        bg: "bg-green-100",
-        text: "text-green-800",
-        icon: CheckCircle,
-    },
-    disputed: { bg: "bg-red-100", text: "text-red-800", icon: XCircle },
-    verified: {
-        bg: "bg-emerald-100",
-        text: "text-emerald-800",
-        icon: CheckCircle,
-    },
-};
-
 /**
  * DocumentTable Component
  * Displays a table of documents with filtering and action buttons
@@ -90,7 +73,7 @@ function DocumentTable({
     userRole = "corporate",
     currentUsername = "",
 }) {
-    const isAdmin = userRole === "admin";
+    const isAdmin = userRole === "admin" || userRole === "auditor";
     const canEdit = isAdmin;
     const canDelete = isAdmin;
     const canDownload = !isAdmin; // Banks and corporates can download
@@ -131,6 +114,7 @@ function DocumentTable({
                     </thead>
                     <tbody>
                         {filteredDocuments.map((doc) => {
+                            console.log(doc);
                             const DocIcon =
                                 documentIcons[doc.doc_type] || FileText;
 
@@ -150,7 +134,7 @@ function DocumentTable({
                                                 </p>
                                                 <p className="text-slate-400 text-sm">
                                                     {new Date(
-                                                        doc.created_at
+                                                        doc.created_at,
                                                     ).toLocaleDateString()}
                                                 </p>
                                             </div>
@@ -158,7 +142,10 @@ function DocumentTable({
                                     </td>
                                     <td className="py-4 px-6">
                                         <span className="text-slate-300 capitalize">
-                                            {doc.doc_type.replace(/_/g, " ")}
+                                            {(doc.doc_type || "").replace(
+                                                /_/g,
+                                                " ",
+                                            )}
                                         </span>
                                     </td>
                                     <td className="py-4 px-6">
@@ -166,11 +153,16 @@ function DocumentTable({
                                             <div className="w-8 h-8 bg-slate-600 rounded-full flex items-center justify-center">
                                                 <Users className="w-4 h-4 text-slate-300" />
                                             </div>
-                                            <span className="text-slate-300">
-                                                {doc.ownerName ||
-                                                    doc.owner_id ||
+                                            {!isAdmin ? (<span className="text-slate-300">
+                                                {currentUsername ||
                                                     "Me"}
-                                            </span>
+                                            </span>) : (
+                                                <span className="text-slate-300">
+                                                    {doc.ownerName ||
+                                                        doc.owner_id ||
+                                                        "Me"}
+                                                </span>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="py-4 px-6">
@@ -185,7 +177,7 @@ function DocumentTable({
                                     </td>
                                     <td className="py-4 px-6 text-slate-300">
                                         {new Date(
-                                            doc.issued_at
+                                            doc.issued_at,
                                         ).toLocaleDateString()}
                                     </td>
                                     <td className="py-4 px-6">

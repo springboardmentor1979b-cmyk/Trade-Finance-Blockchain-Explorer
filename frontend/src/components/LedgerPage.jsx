@@ -2,13 +2,11 @@ import React, { useState, useEffect } from "react";
 import { FileText, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
 import LedgerTable from "./LedgerTable";
 import LedgerActionBar from "./LedgerActionBar";
-import LedgerUploadModal from "./LedgerUploadModal";
 import LedgerEditModal from "./LedgerEditModal";
 import LedgerViewModal from "./LedgerViewModal";
 import { useAuth } from "../context/AuthContext";
 import {
     ledgerService,
-    tradeChainService,
     showSuccessToast,
     showErrorToast,
 } from "../api/services";
@@ -37,20 +35,12 @@ function LedgerPage({ onClose }) {
     const [currentPage, setCurrentPage] = useState(1);
 
     // Modal states
-    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedLedger, setSelectedLedger] = useState(null);
 
     // Form states
-    const [uploadForm, setUploadForm] = useState({
-        document_number: "",
-        description: "",
-    });
     const [editForm, setEditForm] = useState({ action: "" });
-
-    // Documents list for dropdown
-    const [documents, setDocuments] = useState([]);
 
     // Helpers
     const isPrivileged = role === "admin" || role === "auditor";
@@ -92,69 +82,11 @@ function LedgerPage({ onClose }) {
         }
     };
 
-    const fetchDocuments = async () => {
-        if (role !== "bank" && role !== "corporate") return;
-        try {
-            const response = await tradeChainService.getMyDocuments();
-            setDocuments(response || []);
-        } catch (error) {
-            console.error("Failed to fetch documents:", error);
-        }
-    };
-
     useEffect(() => {
         fetchLedgers();
     }, [currentPage, searchQuery, filterAction, startDate, role]);
 
-    useEffect(() => {
-        if (isUploadModalOpen) {
-            fetchDocuments();
-        }
-    }, [isUploadModalOpen, role]);
-
     // Handlers
-    const handleUploadSubmit = async (e) => {
-        e.preventDefault();
-
-        if (!uploadForm.document_number) {
-            showErrorToast(
-                { message: "Please select a document" },
-                "Please select a document",
-            );
-            return;
-        }
-
-        // Find document ID from selected document number
-        const doc = documents.find(
-            (d) => d.doc_number === uploadForm.document_number,
-        );
-
-        if (!doc) {
-            showErrorToast(
-                { message: "Invalid document selected" },
-                "Invalid document selected",
-            );
-            return;
-        }
-
-        try {
-            await ledgerService.createEntry(doc.id, "issued", {
-                description: uploadForm.description || "",
-            });
-
-            showSuccessToast("Ledger entry created successfully");
-            setIsUploadModalOpen(false);
-            setUploadForm({
-                document_number: "",
-                description: "",
-            });
-            fetchLedgers();
-        } catch (error) {
-            console.error("Create ledger error:", error);
-            showErrorToast(error, "Failed to create ledger entry");
-        }
-    };
-
     const handleEditSubmit = async (e) => {
         e.preventDefault();
         if (!selectedLedger) return;
@@ -208,11 +140,6 @@ function LedgerPage({ onClose }) {
         setSelectedLedger(ledger);
         setEditForm({ action: ledger.action });
         setIsEditModalOpen(true);
-    };
-
-    const handleCreateClick = () => {
-        setUploadForm({ document_number: "", description: "" });
-        setIsUploadModalOpen(true);
     };
 
     return (
@@ -292,8 +219,6 @@ function LedgerPage({ onClose }) {
                     onFilterActionChange={setFilterAction}
                     startDate={startDate}
                     onStartDateChange={setStartDate}
-                    onCreateClick={handleCreateClick}
-                    userRole={role}
                 />
 
                 {/* Ledger Table */}
@@ -320,18 +245,6 @@ function LedgerPage({ onClose }) {
             </div>
 
             {/* Modals */}
-            <LedgerUploadModal
-                isOpen={isUploadModalOpen}
-                formData={uploadForm}
-                onFormChange={setUploadForm}
-                onClose={() => {
-                    setIsUploadModalOpen(false);
-                    setUploadForm({ document_number: "", description: "" });
-                }}
-                onSubmit={handleUploadSubmit}
-                documents={documents}
-            />
-
             <LedgerEditModal
                 isOpen={isEditModalOpen}
                 ledger={selectedLedger}
