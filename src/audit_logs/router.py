@@ -90,7 +90,7 @@ def get_all_audit_logs(
 def get_my_audit_logs(
     db: Session = Depends(get_session),
     user: Users = Depends(get_current_user),
-    role_check: None = Depends(role_required(["admin"])),
+    role_check: None = Depends(role_required(["admin", "auditor"])),
 ) -> list[AuditLogResponse]:
     """Retrieve audit logs for the current admin user.
 

@@ -11,11 +11,11 @@ Classes:
 from datetime import date, datetime
 from typing import Dict, Optional
 
-from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlmodel import Session, select
 
 from src.db.models import Documents, LedgerEntries, Users
+from src.errors import DocumentNotFound
 
 from .schemas import LedgerCreate
 
@@ -56,7 +56,7 @@ class LedgerService:
             LedgerEntries: The created ledger entry with all details.
 
         Raises:
-            HTTPException (404): If the specified document does not exist.
+            DocumentNotFound: If the specified document does not exist.
 
         Example:
             >>> entry = LedgerService.create_ledger_entry(
@@ -68,9 +68,8 @@ class LedgerService:
         # 1. Check if document exists
         document = db.get(Documents, ledger_data.document_id)
         if not document:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Document with ID {ledger_data.document_id} not found",
+            raise DocumentNotFound(
+                f"Document with ID {ledger_data.document_id} not found."
             )
 
         # 2. Create new ledger entry
@@ -102,7 +101,7 @@ class LedgerService:
         Example:
             >>> success = LedgerService.delete_ledger_entry(123, db)
             >>> if not success:
-            ...     raise HTTPException(404, "Record not found")
+            ...     raise DocumentNotFound(f"Ledger entry with ID 123 not found.")
         """
         statement = select(LedgerEntries).where(LedgerEntries.id == ledger_id)
         result = db.exec(statement).first()
@@ -239,7 +238,7 @@ class LedgerService:
         logs = db.exec(
             select(LedgerEntries)
             .join(Documents)
-            .join(Users, LedgerEntries.actor_id == Users.id)
+            .join(Users, LedgerEntries.actor_id == Users.id)  # type: ignore
             .where(LedgerEntries.actor_id == user_id)
             .order_by(LedgerEntries.created_at.desc())  # type: ignore
             .offset(offset)
@@ -263,9 +262,7 @@ class LedgerService:
         return {"total": total, "page": page, "page_size": page_size, "items": items}
 
     @staticmethod
-    def edit_action(
-        ledger_id: int, new_action: str, db: Session
-    ) -> Optional[LedgerEntries]:
+    def edit_action(ledger_id: int, new_action: str, db: Session) -> LedgerEntries:
         """Update the action field of a ledger entry.
 
         Updates only the action field of an existing ledger entry.
@@ -277,7 +274,7 @@ class LedgerService:
             db: Database session for the transaction.
 
         Returns:
-            LedgerEntries: Updated ledger entry, or None if not found.
+            LedgerEntries: Updated ledger entry.
 
         Example:
             >>> updated = LedgerService.edit_action(123, "verified", db)
@@ -289,7 +286,7 @@ class LedgerService:
         result = db.exec(statement).first()
 
         if not result:
-            return None
+            raise DocumentNotFound(f"Ledger entry with ID {ledger_id} not found.")
 
         # Update the action field using the new value
         result.action = new_action  # type: ignore

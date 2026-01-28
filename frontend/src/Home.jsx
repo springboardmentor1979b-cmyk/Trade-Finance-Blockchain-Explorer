@@ -10,6 +10,9 @@ import {
     Ship,
     BookOpen,
     AlertCircle,
+    ShoppingCart,
+    Globe,
+    Shield,
 } from "lucide-react";
 import StatsCard from "./components/StatsCard";
 import DocumentTable from "./components/DocumentTable";
@@ -43,8 +46,6 @@ function Home() {
         setSearchQuery: setDocSearchQuery,
         filterType,
         setFilterType,
-        filterStatus,
-        setFilterStatus,
     } = useDocuments([]);
 
     const {
@@ -193,7 +194,8 @@ function Home() {
                                     Dashboard
                                 </h1>
                                 <p className="text-slate-400">
-                                    Welcome back, {user?.name || user?.email}
+                                    Welcome back, {user?.name || user?.email},{" "}
+                                    {role || ""}
                                 </p>
                             </div>
                         </div>
@@ -261,10 +263,7 @@ function Home() {
                                     Risk Scores
                                 </button>
                             )}
-                            {(role === "admin" ||
-                                role === "auditor" ||
-                                role === "bank" ||
-                                role === "corporate") && (
+                            {(role === "admin" || role === "auditor") && (
                                 <button
                                     onClick={() => setActiveTab("auditLogs")}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -280,7 +279,7 @@ function Home() {
                         </div>
 
                         {/* Stats Cards */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2">
                             <StatsCard
                                 label="Total Documents"
                                 value={documents.length}
@@ -318,6 +317,38 @@ function Home() {
                                 icon={FileText}
                                 color="bg-purple-500"
                             />
+                            <StatsCard
+                                label="Purchase Orders"
+                                value={
+                                    documents.filter(
+                                        (d) => d.doc_type === "purchase_order",
+                                    ).length
+                                }
+                                icon={ShoppingCart}
+                                color="bg-orange-500"
+                            />
+                            <StatsCard
+                                label="Certificates of Origin"
+                                value={
+                                    documents.filter(
+                                        (d) =>
+                                            d.doc_type ===
+                                            "certificate_of_origin",
+                                    ).length
+                                }
+                                icon={Globe}
+                                color="bg-teal-500"
+                            />
+                            <StatsCard
+                                label="Insurance Certs"
+                                value={
+                                    documents.filter(
+                                        (d) => d.doc_type === "insurance_cert",
+                                    ).length
+                                }
+                                icon={Shield}
+                                color="bg-pink-500"
+                            />
                         </div>
 
                         {/* Action Bar */}
@@ -326,8 +357,6 @@ function Home() {
                             onSearchChange={setDocSearchQuery}
                             filterType={filterType}
                             onFilterTypeChange={setFilterType}
-                            filterStatus={filterStatus}
-                            onFilterStatusChange={setFilterStatus}
                             onUploadClick={() => setIsUploadModalOpen(true)}
                             userRole={role}
                         />
@@ -345,7 +374,6 @@ function Home() {
                                 documents={documents}
                                 searchQuery={docSearchQuery}
                                 filterType={filterType}
-                                filterStatus={filterStatus}
                                 onView={handleView}
                                 onEdit={handleEdit}
                                 onDelete={handleDelete}

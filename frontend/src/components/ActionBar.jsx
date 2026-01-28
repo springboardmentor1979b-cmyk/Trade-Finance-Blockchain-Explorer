@@ -14,8 +14,6 @@ import { Plus, Search, ChevronDown } from "lucide-react";
  * @param {Function} props.onSearchChange - Callback when search text changes
  * @param {string} props.filterType - Currently selected document type filter
  * @param {Function} props.onFilterTypeChange - Callback when type filter changes
- * @param {string} props.filterStatus - Currently selected status filter
- * @param {Function} props.onFilterStatusChange - Callback when status filter changes
  * @param {Function} props.onUploadClick - Callback when Upload button is clicked
  * @param {string} props.userRole - Current user's role (admin, corporate, bank)
  *
@@ -25,8 +23,6 @@ import { Plus, Search, ChevronDown } from "lucide-react";
  *   onSearchChange={setQuery}
  *   filterType={type}
  *   onFilterTypeChange={setType}
- *   filterStatus={status}
- *   onFilterStatusChange={setStatus}
  *   onUploadClick={() => setShowModal(true)}
  *   userRole="admin"
  * />
@@ -36,8 +32,6 @@ function ActionBar({
     onSearchChange,
     filterType,
     onFilterTypeChange,
-    filterStatus,
-    onFilterStatusChange,
     onUploadClick,
     userRole = "corporate",
 }) {
@@ -93,40 +87,6 @@ function ActionBar({
                                 className="bg-slate-800"
                             >
                                 Insurance Certificate
-                            </option>
-                        </select>
-                        <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
-                    </div>
-
-                    {/* Status Filter */}
-                    <div className="relative">
-                        <select
-                            value={filterStatus}
-                            onChange={(e) =>
-                                onFilterStatusChange(e.target.value)
-                            }
-                            className="appearance-none bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 pr-10 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                        >
-                            <option value="all" className="bg-slate-800">
-                                All Status
-                            </option>
-                            <option value="pending" className="bg-slate-800">
-                                Pending
-                            </option>
-                            <option
-                                value="in_progress"
-                                className="bg-slate-800"
-                            >
-                                In Progress
-                            </option>
-                            <option value="verified" className="bg-slate-800">
-                                Verified
-                            </option>
-                            <option value="completed" className="bg-slate-800">
-                                Completed
-                            </option>
-                            <option value="disputed" className="bg-slate-800">
-                                Disputed
                             </option>
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />

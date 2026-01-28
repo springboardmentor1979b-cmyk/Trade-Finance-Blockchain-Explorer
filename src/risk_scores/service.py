@@ -10,10 +10,10 @@ Classes:
 
 from typing import List, Optional
 
-from fastapi import HTTPException
 from sqlmodel import Session, or_, select
 
 from src.db.models import RiskScores, Users
+from src.errors import DocumentNotFound
 
 from .schemas import RiskScoreCreate, RiskScoreResponse, RiskScoreUpdate
 
@@ -48,7 +48,7 @@ class RiskScoreService:
             RiskScoreResponse: The created risk score with user name resolved.
 
         Raises:
-            HTTPException (404): If the target user does not exist.
+            DocumentNotFound: If the target user does not exist.
 
         Example:
             >>> score = RiskScoreService.create_risk_score(
@@ -59,19 +59,19 @@ class RiskScoreService:
         # Verify user exists
         user = db.get(Users, risk_data.user_id)
         if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise DocumentNotFound(f"User with ID {risk_data.user_id} not found.")
 
         risk_score = RiskScores(
             user_id=risk_data.user_id,
             score=risk_data.score,
             rationale=risk_data.rationale,
-        )
+        )  # type: ignore
         db.add(risk_score)
         db.commit()
         db.refresh(risk_score)
 
         return RiskScoreResponse(
-            id=risk_score.id,
+            id=risk_score.id,  # type: ignore
             score=risk_score.score,
             rationale=risk_score.rationale,
             last_updated=risk_score.last_updated,
@@ -102,7 +102,7 @@ class RiskScoreService:
 
         return [
             RiskScoreResponse(
-                id=rs.id,
+                id=rs.id,  # type: ignore
                 score=rs.score,
                 rationale=rs.rationale,
                 last_updated=rs.last_updated,
@@ -147,15 +147,15 @@ class RiskScoreService:
             ...     db, search="John"
             ... )
         """
-        statement = select(RiskScores).join(Users, RiskScores.user_id == Users.id)
+        statement = select(RiskScores).join(Users, RiskScores.user_id == Users.id)  # type: ignore
 
         # Apply filters
         if search:
             search_term = f"%{search}%"
             statement = statement.where(
                 or_(
-                    Users.name.ilike(search_term),
-                    RiskScores.rationale.ilike(search_term),
+                    Users.name.ilike(search_term),  # type: ignore
+                    RiskScores.rationale.ilike(search_term),  # type: ignore
                 )
             )
 
@@ -168,12 +168,12 @@ class RiskScoreService:
         if user_id is not None:
             statement = statement.where(RiskScores.user_id == user_id)
 
-        statement = statement.order_by(RiskScores.last_updated.desc())
+        statement = statement.order_by(RiskScores.last_updated.desc())  # type: ignore
         risk_scores = db.exec(statement).all()
 
         return [
             RiskScoreResponse(
-                id=rs.id,
+                id=rs.id,  # type: ignore
                 score=rs.score,
                 rationale=rs.rationale,
                 last_updated=rs.last_updated,
@@ -212,7 +212,7 @@ class RiskScoreService:
         """
         risk_score = db.get(RiskScores, risk_id)
         if not risk_score:
-            raise HTTPException(status_code=404, detail="Risk score not found")
+            raise DocumentNotFound(f"Risk score with ID {risk_id} not found.")
 
         risk_score.score = update_data.score
         risk_score.rationale = update_data.rationale
@@ -221,7 +221,7 @@ class RiskScoreService:
         db.refresh(risk_score)
 
         return RiskScoreResponse(
-            id=risk_score.id,
+            id=risk_score.id,  # type: ignore
             score=risk_score.score,
             rationale=risk_score.rationale,
             last_updated=risk_score.last_updated,
@@ -240,14 +240,14 @@ class RiskScoreService:
             db: Database session for the transaction.
 
         Raises:
-            HTTPException (404): If the risk score is not found.
+            DocumentNotFound: If the risk score is not found.
 
         Example:
             >>> RiskScoreService.delete_risk_score(1, db)
         """
         risk_score = db.get(RiskScores, risk_id)
         if not risk_score:
-            raise HTTPException(status_code=404, detail="Risk score not found")
+            raise DocumentNotFound(f"Risk score with ID {risk_id} not found.")
 
         db.delete(risk_score)
         db.commit()

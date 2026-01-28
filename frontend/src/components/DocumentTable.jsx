@@ -40,7 +40,6 @@ const documentIcons = {
  * @param {Array} props.documents - Array of document objects to display
  * @param {string} props.searchQuery - Current search query
  * @param {string} props.filterType - Document type filter
- * @param {string} props.filterStatus - Status filter
  * @param {Function} props.onView - Callback when view button is clicked
  * @param {Function} props.onEdit - Callback when edit button is clicked
  * @param {Function} props.onDelete - Callback when delete button is clicked
@@ -53,7 +52,6 @@ const documentIcons = {
  *   documents={docs}
  *   searchQuery={query}
  *   filterType={type}
- *   filterStatus={status}
  *   onView={handleView}
  *   onEdit={handleEdit}
  *   onDelete={handleDelete}
@@ -114,7 +112,6 @@ function DocumentTable({
                     </thead>
                     <tbody>
                         {filteredDocuments.map((doc) => {
-                            console.log(doc);
                             const DocIcon =
                                 documentIcons[doc.doc_type] || FileText;
 
@@ -153,10 +150,11 @@ function DocumentTable({
                                             <div className="w-8 h-8 bg-slate-600 rounded-full flex items-center justify-center">
                                                 <Users className="w-4 h-4 text-slate-300" />
                                             </div>
-                                            {!isAdmin ? (<span className="text-slate-300">
-                                                {currentUsername ||
-                                                    "Me"}
-                                            </span>) : (
+                                            {!isAdmin ? (
+                                                <span className="text-slate-300">
+                                                    {currentUsername || "Me"}
+                                                </span>
+                                            ) : (
                                                 <span className="text-slate-300">
                                                     {doc.ownerName ||
                                                         doc.owner_id ||

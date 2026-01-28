@@ -89,42 +89,6 @@ async def create_transaction(
 
 
 @transaction_router.get(
-    "/{transaction_id}",
-    response_model=TradeTransactionResponse,
-    summary="Get transaction by ID",
-    description="Retrieve details of a specific trade transaction.",
-)
-async def get_transaction(
-    transaction_id: int,
-    session: Session = Depends(get_session),
-    role_check: bool = Depends(role_required(["bank", "corporate"])),
-) -> TradeTransactionResponse:
-    """Retrieve a specific transaction by ID.
-
-    Fetches complete details of a transaction including buyer and seller
-    information.
-
-    Args:
-        transaction_id: ID of the transaction to retrieve.
-        session: Database session (injected).
-        role_check: Role validation ensuring bank/corporate access (injected).
-
-    Returns:
-        TradeTransactionResponse: Complete transaction details.
-
-    Raises:
-        HTTPException (401): If user is not authenticated.
-        HTTPException (403): If user is not a bank or corporate user.
-        HTTPException (404): If transaction not found.
-    """
-    transaction = trade_transaction_service.get_transaction(
-        session=session, transaction_id=transaction_id
-    )
-
-    return TradeTransactionResponse.model_validate(transaction)
-
-
-@transaction_router.get(
     "/",
     response_model=TradeTransactionListResponse,
     summary="List all transactions",
@@ -185,57 +149,6 @@ async def list_transactions(
     )
 
 
-@transaction_router.patch(
-    "/{transaction_id}/status",
-    response_model=TradeTransactionResponse,
-    summary="Update transaction status",
-    description="Update the status of an existing trade transaction. Only bank and corporate users can update.",
-)
-async def update_transaction_status(
-    transaction_id: int,
-    payload: UpdateTransactionStatusRequest,
-    session: Session = Depends(get_session),
-    user: Users = Depends(get_current_user),
-    role_check: bool = Depends(role_required(["admin", "auditor"])),
-):
-    """Update the status of a transaction.
-
-    Updates the status of an existing transaction. This operation is
-    restricted to Admin and Auditor users and is logged in the audit trail.
-
-    Args:
-        transaction_id: ID of the transaction to update.
-        payload: Request body containing the new status.
-        session: Database session (injected).
-        user: Current authenticated user (injected).
-        role_check: Role validation ensuring admin/auditor access (injected).
-
-    Returns:
-        TradeTransactionResponse: The updated transaction.
-
-    Raises:
-        HTTPException (401): If user is not authenticated.
-        HTTPException (403): If user is not an admin or auditor.
-        HTTPException (404): If transaction not found.
-    """
-    trade_transaction_service.update_transaction_status(
-        session=session,
-        transaction_id=transaction_id,
-        new_status=payload.status,
-    )
-    log_action(session, user.id, "UPDATE", "transaction", str(transaction_id))  # type: ignore
-    session.commit()
-    updated_transaction = session.exec(
-        select(TradeTransactions)
-        .options(
-            selectinload(TradeTransactions.buyer),  # type: ignore
-            selectinload(TradeTransactions.seller),  # type: ignore
-        )
-        .where(TradeTransactions.id == transaction_id)
-    ).one()
-    return TradeTransactionResponse.model_validate(updated_transaction)
-
-
 @transaction_router.get(
     "/user/{user_id}",
     response_model=TradeTransactionListResponse,
@@ -286,10 +199,97 @@ async def get_user_transactions(
 
     return TradeTransactionListResponse(
         total=total,
-        transactions=[TradeTransactionResponse(**t.model_dump()) for t in transactions],
+        transactions=[TradeTransactionResponse.model_validate(t) for t in transactions],
         skip=skip,
         limit=limit,  # type: ignore
     )
+
+
+@transaction_router.get(
+    "/{transaction_id}",
+    response_model=TradeTransactionResponse,
+    summary="Get transaction by ID",
+    description="Retrieve details of a specific trade transaction.",
+)
+async def get_transaction(
+    transaction_id: int,
+    session: Session = Depends(get_session),
+    role_check: bool = Depends(role_required(["bank", "corporate"])),
+) -> TradeTransactionResponse:
+    """Retrieve a specific transaction by ID.
+
+    Fetches complete details of a transaction including buyer and seller
+    information.
+
+    Args:
+        transaction_id: ID of the transaction to retrieve.
+        session: Database session (injected).
+        role_check: Role validation ensuring bank/corporate access (injected).
+
+    Returns:
+        TradeTransactionResponse: Complete transaction details.
+
+    Raises:
+        HTTPException (401): If user is not authenticated.
+        HTTPException (403): If user is not a bank or corporate user.
+        HTTPException (404): If transaction not found.
+    """
+    transaction = trade_transaction_service.get_transaction(
+        session=session, transaction_id=transaction_id
+    )
+
+    return TradeTransactionResponse.model_validate(transaction)
+
+
+@transaction_router.patch(
+    "/{transaction_id}/status",
+    response_model=TradeTransactionResponse,
+    summary="Update transaction status",
+    description="Update the status of an existing trade transaction. Only bank and corporate users can update.",
+)
+async def update_transaction_status(
+    transaction_id: int,
+    payload: UpdateTransactionStatusRequest,
+    session: Session = Depends(get_session),
+    user: Users = Depends(get_current_user),
+    role_check: bool = Depends(role_required(["admin", "auditor"])),
+):
+    """Update the status of a transaction.
+
+    Updates the status of an existing transaction. This operation is
+    restricted to Admin and Auditor users and is logged in the audit trail.
+
+    Args:
+        transaction_id: ID of the transaction to update.
+        payload: Request body containing the new status.
+        session: Database session (injected).
+        user: Current authenticated user (injected).
+        role_check: Role validation ensuring admin/auditor access (injected).
+
+    Returns:
+        TradeTransactionResponse: The updated transaction.
+
+    Raises:
+        HTTPException (401): If user is not authenticated.
+        HTTPException (403): If user is not an admin or auditor.
+        HTTPException (404): If transaction not found.
+    """
+    trade_transaction_service.update_transaction_status(
+        session=session,
+        transaction_id=transaction_id,
+        new_status=payload.status,
+    )
+    log_action(session, user.id, "UPDATE", "transaction", str(transaction_id))  # type: ignore
+    session.commit()
+    updated_transaction = session.exec(
+        select(TradeTransactions)
+        .options(
+            selectinload(TradeTransactions.buyer),  # type: ignore
+            selectinload(TradeTransactions.seller),  # type: ignore
+        )
+        .where(TradeTransactions.id == transaction_id)
+    ).one()
+    return TradeTransactionResponse.model_validate(updated_transaction)
 
 
 @transaction_router.delete("/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -8,15 +8,15 @@ Classes:
     TradeTransactionService: Service class for transaction operations.
 """
 
-from typing import Optional, Tuple
+from typing import Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import selectinload
-from sqlmodel import Session, func, or_, select
+from sqlmodel import Session, String, cast, func, or_, select
 
 from src.db.enums import TransactionStatusChoices
 from src.db.models import TradeTransactions, Users
-from src.errors import DocumentNotFound
+from src.errors import DocumentNotFound,UserNotFound
 
 
 class TradeTransactionService:
@@ -49,14 +49,11 @@ class TradeTransactionService:
             Users: The validated user object.
 
         Raises:
-            HTTPException: If user does not exist.
+            UserNotFound: If user does not exist.
         """
         user = session.get(Users, user_id)
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"User with id {user_id} not found",
-            )
+            raise UserNotFound()
         return user
 
     @staticmethod
@@ -191,68 +188,54 @@ class TradeTransactionService:
         search: Optional[str] = None,
         buyer_id: Optional[int] = None,
         seller_id: Optional[int] = None,
-    ) -> Tuple[list[TradeTransactions], int]:
-        """List transactions with optional filtering.
-
-        Args:
-            session: Database session.
-            skip: Number of records to skip (pagination).
-            limit: Maximum number of records to return.
-            status_filter: Optional status to filter by.
-            search: Optional search term for transaction ID or user names.
-            buyer_id: Optional buyer ID to filter by.
-            seller_id: Optional seller ID to filter by.
-
-        Returns:
-            Tuple[list[TradeTransactions], int]: List of transactions and total count.
-        """
-
+    ) -> tuple[list[TradeTransactions], int]:
         query = select(TradeTransactions).options(
             selectinload(TradeTransactions.buyer),  # type: ignore
             selectinload(TradeTransactions.seller),  # type: ignore
         )
 
-        # Apply status filter if provided
         if status_filter:
             query = query.where(TradeTransactions.status == status_filter)
 
-        # Apply buyer filter
         if buyer_id:
             query = query.where(TradeTransactions.buyer_id == buyer_id)
 
-        # Apply seller filter
         if seller_id:
             query = query.where(TradeTransactions.seller_id == seller_id)
 
-        # Apply search filter (search by transaction ID or user names)
         if search:
             search_term = f"%{search}%"
-            # Get buyer and seller IDs that match the search term
-            buyer_ids = session.exec(
-                select(Users.id).where(Users.name.ilike(search_term))  # type: ignore
-            ).all()
-            seller_ids = session.exec(
-                select(Users.id).where(Users.name.ilike(search_term))  # type: ignore
-            ).all()
 
-            # Build search conditions
-            search_conditions = [
-                TradeTransactions.id.cast(str).ilike(search_term),  # type: ignore
-                TradeTransactions.buyer_id.in_(buyer_ids) if buyer_ids else False,  # type: ignore
-                TradeTransactions.seller_id.in_(seller_ids) if seller_ids else False,  # type: ignore
+            buyer_ids = [
+                row[0]  # type: ignore
+                for row in session.exec(
+                    select(Users.id).where(Users.name.ilike(search_term))  # type: ignore
+                ).all()
             ]
-            # Filter out False values (when no matching IDs)
-            search_conditions = [c for c in search_conditions if c is not False]
-            if search_conditions:
-                query = query.where(or_(*search_conditions))
 
-        # Get total count before pagination
+            seller_ids = buyer_ids  # same query, same table
+
+            search_conditions = [
+                cast(TradeTransactions.id, String).ilike(search_term),
+            ]
+
+            if buyer_ids:
+                search_conditions.append(TradeTransactions.buyer_id.in_(buyer_ids))  # type: ignore
+
+            if seller_ids:
+                search_conditions.append(TradeTransactions.seller_id.in_(seller_ids))  # type: ignore
+
+            query = query.where(or_(*search_conditions))
+
+        # total count (before pagination)
         count_query = select(func.count()).select_from(query.subquery())
         total = session.exec(count_query).one()
 
-        # Order by created_at descending (newest first)
-        query = query.order_by(TradeTransactions.created_at.desc())  # type: ignore
-        query = query.offset(skip).limit(limit)
+        query = (
+            query.order_by(TradeTransactions.created_at.desc())  # type: ignore
+            .offset(skip)
+            .limit(limit)
+        )
 
         transactions = session.exec(query).all()
         return list(transactions), total
