@@ -277,6 +277,25 @@ class TradeChainService:
         return list(document)
 
     @staticmethod
+    def get_document_by_id(
+        document_id: int,
+        db: Session,
+    ) -> Documents | None:
+        """Retrieve a single document by its ID.
+
+        Fetches a document from the database by its primary key ID.
+
+        Args:
+            document_id: The primary key ID of the document to retrieve.
+            db: SQLModel database session for database operations.
+
+        Returns:
+            Documents | None: The document if found, otherwise None.
+        """
+        statement = select(Documents).where(Documents.id == document_id)
+        return db.exec(statement).first()
+
+    @staticmethod
     def edit_document(
         document_id: int,
         doc_type: DocumentTypeChoices,

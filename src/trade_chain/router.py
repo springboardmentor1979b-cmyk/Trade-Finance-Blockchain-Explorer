@@ -1,13 +1,14 @@
 """Trade Chain API Router.
 
 This module defines the FastAPI router for trade document management endpoints.
-It provides endpoints for uploading, retrieving, updating, and deleting
+It provides endpoints for uploading, retrieving, updating, downloading, and deleting
 trade documents such as Letters of Credit, Invoices, and Bills of Lading.
 
 Endpoints:
     POST /upload: Upload single or multiple documents (Bank, Corporate)
     GET /document: Get current user's documents (Bank, Corporate)
     GET /documents: Get all users' documents (Admin, Auditor)
+    GET /document/{document_id}/download: Download a document file (Bank, Corporate own; Admin, Auditor all)
     PUT /document/{document_id}: Update document type (Admin, Auditor)
     DELETE /document/{document_id}: Delete a document (Admin, Auditor)
 
@@ -15,6 +16,8 @@ Permissions:
     - CREATE: Bank, Corporate
     - READ (own): Bank, Corporate
     - READ (all): Admin, Auditor
+    - DOWNLOAD (own): Bank, Corporate
+    - DOWNLOAD (all): Admin, Auditor
     - UPDATE: Admin, Auditor
     - DELETE: Admin, Auditor
 
@@ -23,9 +26,12 @@ Note:
     must contact an Admin or Auditor to perform the operation.
 """
 
+import mimetypes
 from datetime import datetime
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlmodel import Session
 
 from src.audit_logs.service import log_action
@@ -33,6 +39,7 @@ from src.Auth.dependency import get_current_user, role_required
 from src.db.database import get_session
 from src.db.enums import DocumentTypeChoices
 from src.db.models import Documents, Users
+from src.errors import DocumentNotFound
 
 from .schemas import DocumentUpdate, UserDocumentsResponse
 from .service import TradeChainService
@@ -215,3 +222,61 @@ def delete_document(
     # Log the action after successful deletion
     log_action(db, user.id, "DELETE", "document", str(document_id))  # type: ignore
     db.commit()
+
+
+@trade_chain_router.get("/document/{document_id}/download")
+def download_document(
+    document_id: int,
+    db: Session = Depends(get_session),
+    user: Users = Depends(get_current_user),
+    role_check: None = Depends(role_required(["bank", "corporate"])),
+) -> FileResponse:
+    """Download a document file by its ID.
+
+    Returns the actual file for download. Bank and Corporate users can only
+    download their own documents. Admin and Auditor users can download any document.
+
+    Args:
+        document_id: ID of the document to download.
+        db: Database session (injected).
+        user: Current authenticated user (injected).
+        role_check: Role validation ensuring authenticated access (injected).
+
+    Returns:
+        FileResponse: The document file as a downloadable attachment.
+
+    Raises:
+        HTTPException (401): If user is not authenticated.
+        HTTPException (403): If user doesn't have permission to download this document.
+        HTTPException (404): If document not found or file doesn't exist on disk.
+    """
+    document = TradeChainService.get_document_by_id(document_id, db)
+
+    if not document:
+        raise DocumentNotFound()
+
+    file_path = Path(document.file_url)
+    if not file_path.exists():
+        raise DocumentNotFound()
+
+    stored_filename = file_path.name
+    original_filename = (
+        "_".join(stored_filename.split("_")[1:])
+        if "_" in stored_filename
+        else stored_filename
+    )
+
+    # Log the download action
+    log_action(db, user.id, "DOWNLOAD", "document", str(document_id))  # type: ignore
+    db.commit()
+
+    # Detect MIME type from file extension
+    mime_type, _ = mimetypes.guess_type(original_filename)
+    if not mime_type:
+        mime_type = "application/octet-stream"
+
+    return FileResponse(
+        path=str(file_path),
+        filename=original_filename,
+        media_type=mime_type,
+    )

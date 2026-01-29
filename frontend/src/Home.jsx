@@ -141,14 +141,58 @@ function Home() {
         }
     };
 
-    const handleDownload = (doc) => {
-        if (doc.file_url) {
-            window.open(doc.file_url, "_blank");
-        } else {
+    const handleDownload = async (doc) => {
+        if (!doc.id) {
             showErrorToast(
-                { message: "File URL not available" },
-                "File URL not available",
+                { message: "Document ID not available" },
+                "Document ID not available",
             );
+            return;
+        }
+
+        try {
+            const response = await tradeChainService.downloadDocument(doc.id);
+
+            // Get the content type from response headers
+            const contentType =
+                response.headers["content-type"] || "application/octet-stream";
+            const blob = new Blob([response.data], { type: contentType });
+
+            // Extract filename from Content-Disposition header or use default
+            const contentDisposition = response.headers["content-disposition"];
+            let filename = `document_${doc.id}`;
+            if (contentDisposition) {
+                // Try filename*= first (RFC 5987 encoding)
+                const filenameStarMatch = contentDisposition.match(
+                    /filename\*=UTF-8''([^;\n]*)/i,
+                );
+                if (filenameStarMatch && filenameStarMatch[1]) {
+                    filename = decodeURIComponent(filenameStarMatch[1]);
+                } else {
+                    // Fall back to filename=
+                    const filenameMatch = contentDisposition.match(
+                        /filename="?([^";\n]+)"?/i,
+                    );
+                    if (filenameMatch && filenameMatch[1]) {
+                        filename = filenameMatch[1].trim();
+                    }
+                }
+            }
+
+            // Create download link and trigger download
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+            showSuccessToast("Document downloaded successfully");
+        } catch (error) {
+            console.error(error);
+            showErrorToast(error, "Download failed");
         }
     };
 

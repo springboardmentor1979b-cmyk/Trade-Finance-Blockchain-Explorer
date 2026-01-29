@@ -179,6 +179,19 @@ export const tradeChainService = {
     deleteDocument: async (documentId) => {
         await api.delete(`/api/trade_chain/document/${documentId}`);
     },
+
+    /**
+     * Download a document file (bank/corporate for own docs, admin/auditor for all)
+     * @param {number} documentId - The ID of the document to download
+     * @returns {Promise<Blob>} The document file as a blob
+     */
+    downloadDocument: async (documentId) => {
+        const response = await api.get(
+            `/api/trade_chain/document/${documentId}/download`,
+            { responseType: "blob" }
+        );
+        return response;
+    },
 };
 
 /* ================= LEDGER SERVICES ================= */
