@@ -17,12 +17,14 @@ function AuditLogsPage({ onClose }) {
 
     // Data states
     const [auditLogs, setAuditLogs] = useState([]);
+    const [totalLogs, setTotalLogs] = useState(0);
     const [loading, setLoading] = useState(true);
 
     // Search and filter states
     const [searchQuery, setSearchQuery] = useState("");
     const [filterAction, setFilterAction] = useState("all");
     const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 25;
 
     // Modal states
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -43,11 +45,10 @@ function AuditLogsPage({ onClose }) {
     const canCreate = role === "admin"; // Only admin can create audit logs
     const canView = isPrivileged;
 
-    // Fetch audit logs from backend with filters
+    // Fetch audit logs from backend with filters and pagination
     const fetchAuditLogs = async () => {
         try {
             setLoading(true);
-            let data;
             if (canView) {
                 // Build filter object for backend
                 const filters = {};
@@ -57,12 +58,19 @@ function AuditLogsPage({ onClose }) {
                 if (filterAction && filterAction !== "all") {
                     filters.action = filterAction;
                 }
-                data = await auditLogsService.getAll(filters);
+                // Calculate skip based on current page
+                const skip = (currentPage - 1) * itemsPerPage;
+                const data = await auditLogsService.getAll(
+                    skip,
+                    itemsPerPage,
+                    filters,
+                );
+                setAuditLogs(data.logs || []);
+                setTotalLogs(data.total || 0);
             } else {
-                data = [];
+                setAuditLogs([]);
+                setTotalLogs(0);
             }
-            setAuditLogs(data || []);
-            setCurrentPage(1); // Reset to first page when filters change
         } catch (error) {
             console.error("Failed to fetch audit logs:", error);
             showErrorToast(error, "Failed to fetch audit logs");
@@ -71,12 +79,17 @@ function AuditLogsPage({ onClose }) {
         }
     };
 
-    // Fetch audit logs when role or filters change
+    // Reset to first page when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, filterAction]);
+
+    // Fetch audit logs when page or filters change
     useEffect(() => {
         if (canView) {
             fetchAuditLogs();
         }
-    }, [role, searchQuery, filterAction]);
+    }, [role, currentPage, searchQuery, filterAction]);
 
     if (!canView) {
         return (
@@ -191,6 +204,7 @@ function AuditLogsPage({ onClose }) {
         (a) => new Date(a.timestamp) > new Date(Date.now() - 86400000),
     ).length;
     const uniqueAdmins = new Set(auditLogs.map((a) => a.admin_name)).size;
+    const totalPages = Math.ceil(totalLogs / itemsPerPage);
 
     return (
         <div className="min-h-full p-6">
@@ -223,7 +237,7 @@ function AuditLogsPage({ onClose }) {
                                     Total Activities
                                 </p>
                                 <p className="text-3xl font-bold text-white mt-2">
-                                    {loading ? "..." : auditLogs.length}
+                                    {loading ? "..." : totalLogs}
                                 </p>
                             </div>
                             <Activity className="w-12 h-12 text-blue-500/20" />
@@ -283,6 +297,7 @@ function AuditLogsPage({ onClose }) {
                     ) : (
                         <AuditLogsTable
                             auditLogs={auditLogs}
+                            totalItems={totalLogs}
                             onView={handleView}
                             onEdit={handleEdit}
                             onDelete={handleDelete}

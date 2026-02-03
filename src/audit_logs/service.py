@@ -11,9 +11,9 @@ Functions:
     log_action: Utility function for logging admin/auditor actions.
 """
 
-from typing import Optional
+from typing import Optional, Tuple
 
-from sqlmodel import Session, or_, select
+from sqlmodel import Session, func, or_, select
 
 from src.db.models import AuditLogs, Users
 
@@ -118,11 +118,13 @@ class AuditLogService:
     @staticmethod
     def get_all_audit_logs(
         db: Session,
+        skip: int = 0,
+        limit: int = 25,
         search: Optional[str] = None,
         action: Optional[str] = None,
         target_type: Optional[str] = None,
-    ) -> list[AuditLogResponse]:
-        """Retrieve all audit logs with optional filtering.
+    ) -> Tuple[list[AuditLogResponse], int]:
+        """Retrieve all audit logs with optional filtering and pagination.
 
         Fetches audit logs from the database with support for searching
         by admin name or target, and filtering by action or target type.
@@ -130,19 +132,19 @@ class AuditLogService:
 
         Args:
             db: Database session for querying.
+            skip: Number of records to skip for pagination (default: 0).
+            limit: Maximum records to return (default: 25).
             search: Optional search term to match against admin name,
                 target_id, or target_type (case-insensitive).
             action: Optional exact match filter for action type.
             target_type: Optional exact match filter for target type.
 
         Returns:
-            list[AuditLogResponse]: List of matching audit log entries.
+            Tuple[list[AuditLogResponse], int]: Tuple of (audit logs, total count).
 
         Example:
-            >>> # Get all UPDATE actions
-            >>> logs = AuditLogService.get_all_audit_logs(db, action="UPDATE")
-            >>> # Search for logs by admin name
-            >>> logs = AuditLogService.get_all_audit_logs(db, search="John")
+            >>> # Get all UPDATE actions with pagination
+            >>> logs, total = AuditLogService.get_all_audit_logs(db, skip=0, limit=25, action="UPDATE")
         """
         statement = select(AuditLogs).join(Users, AuditLogs.admin_id == Users.id)  # type: ignore
 
@@ -163,10 +165,19 @@ class AuditLogService:
         if target_type:
             statement = statement.where(AuditLogs.target_type == target_type)
 
-        statement = statement.order_by(AuditLogs.timestamp.desc())  # type: ignore
+        # Get total count before pagination
+        count_query = select(func.count()).select_from(statement.subquery())
+        total = db.exec(count_query).one()
+
+        # Apply ordering and pagination
+        statement = (
+            statement.order_by(AuditLogs.timestamp.desc())  # type: ignore
+            .offset(skip)
+            .limit(limit)
+        )
         audit_logs = db.exec(statement).all()
 
-        return [
+        logs = [
             AuditLogResponse(
                 id=log.id,  # type: ignore
                 admin_id=log.admin_id,
@@ -178,6 +189,8 @@ class AuditLogService:
             )
             for log in audit_logs
         ]
+
+        return logs, total
 
     @staticmethod
     def get_audit_logs_by_admin(admin_id: int, db: Session) -> list[AuditLogResponse]:

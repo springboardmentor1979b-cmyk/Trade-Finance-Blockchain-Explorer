@@ -147,18 +147,28 @@ export const tradeChainService = {
     },
 
     /**
-     * Get documents for current user (bank/corporate)
+     * Get documents for current user (bank/corporate) with pagination
+     * @param {number} skip - Number of records to skip (default: 0)
+     * @param {number} limit - Maximum number of records to return (default: 25)
+     * @returns {Promise<{total: number, documents: Array, skip: number, limit: number}>}
      */
-    getMyDocuments: async () => {
-        const response = await api.get("/api/trade_chain/document");
+    getMyDocuments: async (skip = 0, limit = 25) => {
+        const response = await api.get("/api/trade_chain/document", {
+            params: { skip, limit },
+        });
         return response.data;
     },
 
     /**
-     * Get all documents for all users (admin/auditor)
+     * Get all documents for all users (admin/auditor) with pagination
+     * @param {number} skip - Number of records to skip (default: 0)
+     * @param {number} limit - Maximum number of records to return (default: 25)
+     * @returns {Promise<{total: number, documents: Array, skip: number, limit: number}>}
      */
-    getAllDocuments: async () => {
-        const response = await api.get("/api/trade_chain/documents");
+    getAllDocuments: async (skip = 0, limit = 25) => {
+        const response = await api.get("/api/trade_chain/documents", {
+            params: { skip, limit },
+        });
         return response.data;
     },
 
@@ -327,14 +337,17 @@ export const auditLogsService = {
     },
 
     /**
-     * Get all audit logs with optional filters (admin/auditor)
+     * Get all audit logs with optional filters and pagination (admin/auditor)
+     * @param {number} skip - Number of records to skip (default: 0)
+     * @param {number} limit - Maximum number of records to return (default: 25)
      * @param {Object} filters - Optional filters
      * @param {string} filters.search - Search by admin name or target
      * @param {string} filters.action - Filter by action type
      * @param {string} filters.targetType - Filter by target type
+     * @returns {Promise<{total: number, logs: Array, skip: number, limit: number}>}
      */
-    getAll: async (filters = {}) => {
-        const params = {};
+    getAll: async (skip = 0, limit = 25, filters = {}) => {
+        const params = { skip, limit };
         if (filters.search) params.search = filters.search;
         if (filters.action) params.action = filters.action;
         if (filters.targetType) params.target_type = filters.targetType;

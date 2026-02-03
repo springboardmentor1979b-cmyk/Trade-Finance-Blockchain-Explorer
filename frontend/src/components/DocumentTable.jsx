@@ -30,26 +30,30 @@ const documentIcons = {
 
 /**
  * DocumentTable Component
- * Displays a table of documents with filtering and action buttons
+ * Displays a table of documents with filtering, pagination, and action buttons
  * Supports role-based action rendering:
  * - Admin: Can view, edit, delete all documents
  * - Corporate/Bank: Can only view and download their own documents
  *
  * @component
  * @param {Object} props - Component props
- * @param {Array} props.documents - Array of document objects to display
- * @param {string} props.searchQuery - Current search query
- * @param {string} props.filterType - Document type filter
+ * @param {Array} props.documents - Array of document objects to display (pre-paginated from backend)
+ * @param {number} props.totalItems - Total number of documents in the backend (for pagination)
+ * @param {string} props.searchQuery - Current search query (for client-side filtering)
+ * @param {string} props.filterType - Document type filter (for client-side filtering)
  * @param {Function} props.onView - Callback when view button is clicked
  * @param {Function} props.onEdit - Callback when edit button is clicked
  * @param {Function} props.onDelete - Callback when delete button is clicked
  * @param {Function} props.onDownload - Callback when download button is clicked
  * @param {string} props.userRole - Current user's role (admin, corporate, bank)
  * @param {string} props.currentUsername - Current user's username for filtering
+ * @param {number} props.currentPage - Current page number (1-indexed)
+ * @param {Function} props.onPageChange - Callback when page changes
  *
  * @example
  * <DocumentTable
  *   documents={docs}
+ *   totalItems={100}
  *   searchQuery={query}
  *   filterType={type}
  *   onView={handleView}
@@ -58,10 +62,13 @@ const documentIcons = {
  *   onDownload={handleDownload}
  *   userRole="admin"
  *   currentUsername="john"
+ *   currentPage={1}
+ *   onPageChange={setCurrentPage}
  * />
  */
 function DocumentTable({
     documents,
+    totalItems = 0,
     searchQuery,
     filterType,
     onView,
@@ -70,12 +77,16 @@ function DocumentTable({
     onDownload,
     userRole = "corporate",
     currentUsername = "",
+    currentPage = 1,
+    onPageChange,
 }) {
+    const ITEMS_PER_PAGE = 25;
     const isAdmin = userRole === "admin" || userRole === "auditor";
     const canEdit = isAdmin;
     const canDelete = isAdmin;
     const canDownload = !isAdmin; // Banks and corporates can download
-    // Filter documents
+
+    // Client-side filter on already paginated data
     const filteredDocuments = documents.filter((doc) => {
         const matchesSearch = (doc.doc_number || "")
             .toLowerCase()
@@ -83,6 +94,10 @@ function DocumentTable({
         const matchesType = filterType === "all" || doc.doc_type === filterType;
         return matchesSearch && matchesType;
     });
+
+    // Pagination is handled by backend, use totalItems for page count
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
 
     return (
         <div className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/10 overflow-hidden">
@@ -237,6 +252,37 @@ function DocumentTable({
                     </div>
                 )}
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between p-4 border-t border-white/10">
+                    <p className="text-sm text-slate-400">
+                        Showing {startIndex + 1} to{" "}
+                        {Math.min(
+                            startIndex + filteredDocuments.length,
+                            totalItems,
+                        )}{" "}
+                        of {totalItems} documents | Page {currentPage} of{" "}
+                        {totalPages}
+                    </p>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => onPageChange(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50 hover:bg-white/20 transition-colors"
+                        >
+                            Previous
+                        </button>
+                        <button
+                            onClick={() => onPageChange(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50 hover:bg-white/20 transition-colors"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

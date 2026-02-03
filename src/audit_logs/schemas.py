@@ -7,6 +7,7 @@ provide automatic API documentation.
 Classes:
     AuditLogCreate: Schema for creating new audit log entries.
     AuditLogResponse: Schema for audit log API responses.
+    AuditLogListResponse: Schema for paginated audit log list responses.
 """
 
 from datetime import datetime
@@ -83,3 +84,30 @@ class AuditLogResponse(BaseModel):
     admin_name: Optional[str] = Field(
         default=None, description="Name of the admin user"
     )
+
+
+class AuditLogListResponse(BaseModel):
+    """Schema for paginated audit log list responses.
+
+    Used for list endpoints that return paginated results with
+    metadata about the total count and pagination parameters.
+
+    Attributes:
+        total: Total number of audit logs matching the query.
+        logs: List of audit logs for the current page.
+        skip: Number of records skipped.
+        limit: Maximum records returned.
+
+    Example:
+        >>> response = AuditLogListResponse(
+        ...     total=100,
+        ...     logs=[...],
+        ...     skip=0,
+        ...     limit=25
+        ... )
+    """
+
+    total: int = Field(..., description="Total number of audit logs")
+    logs: list[AuditLogResponse] = Field(..., description="List of audit logs")
+    skip: int = Field(..., description="Number of records skipped")
+    limit: int = Field(..., description="Maximum records returned")

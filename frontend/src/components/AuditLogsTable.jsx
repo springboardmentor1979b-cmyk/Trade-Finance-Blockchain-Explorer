@@ -3,6 +3,7 @@ import { Eye, Edit3, Trash2, FileText } from "lucide-react";
 
 function AuditLogsTable({
     auditLogs,
+    totalItems = 0,
     onView,
     onEdit,
     onDelete,
@@ -16,11 +17,9 @@ function AuditLogsTable({
     const canEdit = false; // Audit logs cannot be edited
     const canDelete = false; // Audit logs cannot be deleted
 
-    // Data is already filtered by backend, just paginate
-    const totalPages = Math.ceil(auditLogs.length / ITEMS_PER_PAGE);
+    // Data is already paginated by backend
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    const paginatedAuditLogs = auditLogs.slice(startIndex, endIndex);
 
     const actionColors = {
         CREATE: "text-slate-300",
@@ -58,7 +57,7 @@ function AuditLogsTable({
                         </tr>
                     </thead>
                     <tbody>
-                        {paginatedAuditLogs.map((auditLog) => (
+                        {auditLogs.map((auditLog) => (
                             <tr
                                 key={auditLog.id}
                                 className="border-b border-white/5 hover:bg-white/5 transition-colors"
@@ -148,8 +147,8 @@ function AuditLogsTable({
                 <div className="flex items-center justify-between p-4 border-t border-white/10">
                     <p className="text-sm text-slate-400">
                         Showing {startIndex + 1} to{" "}
-                        {Math.min(endIndex, auditLogs.length)} of{" "}
-                        {auditLogs.length} entries | Page {currentPage} of{" "}
+                        {Math.min(startIndex + auditLogs.length, totalItems)} of{" "}
+                        {totalItems} entries | Page {currentPage} of{" "}
                         {totalPages}
                     </p>
                     <div className="flex gap-2">

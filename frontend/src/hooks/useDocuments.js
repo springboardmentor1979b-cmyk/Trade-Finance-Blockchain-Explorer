@@ -3,40 +3,38 @@ import { tradeChainService, showSuccessToast, showErrorToast } from "../api/serv
 
 /**
  * Custom hook for document management
- * Handles document state, filtering, and CRUD operations
+ * Handles document state, filtering, and CRUD operations with backend pagination
  *
  * @param {Array} initialDocuments - Initial documents array
  * @returns {Object} Document management functions and state
  */
 export const useDocuments = (initialDocuments = []) => {
     const [documents, setDocuments] = useState(initialDocuments);
+    const [totalDocuments, setTotalDocuments] = useState(0);
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [filterType, setFilterType] = useState("all");
     const [filterStatus, setFilterStatus] = useState("all");
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 25;
 
-    const fetchDocuments = useCallback(async (role) => {
+    const fetchDocuments = useCallback(async (role, skip = 0, limit = 25) => {
         setLoading(true);
         try {
             let response;
             if (role === "admin" || role === "auditor") {
-                response = await tradeChainService.getAllDocuments();
-                // Flatten the structure for the table
-                const docs = response.flatMap(userDocs => 
-                    userDocs.documents.map(doc => ({
-                        ...doc,
-                        ownerName: userDocs.name,
-                        ownerEmail: userDocs.email
-                    }))
-                );
-                setDocuments(docs);
+                response = await tradeChainService.getAllDocuments(skip, limit);
             } else {
-                response = await tradeChainService.getMyDocuments();
-                setDocuments(response || []);
+                response = await tradeChainService.getMyDocuments(skip, limit);
             }
+            // Response format: { total, documents, skip, limit }
+            setDocuments(response.documents || []);
+            setTotalDocuments(response.total || 0);
         } catch (error) {
             console.error("Failed to fetch documents:", error);
             showErrorToast(error, "Failed to load documents");
+            setDocuments([]);
+            setTotalDocuments(0);
         } finally {
             setLoading(false);
         }
@@ -68,6 +66,7 @@ export const useDocuments = (initialDocuments = []) => {
     return {
         documents,
         setDocuments,
+        totalDocuments,
         loading,
         fetchDocuments,
         searchQuery,
@@ -76,6 +75,9 @@ export const useDocuments = (initialDocuments = []) => {
         setFilterType,
         filterStatus,
         setFilterStatus,
+        currentPage,
+        setCurrentPage,
+        itemsPerPage,
         addDocument,
         updateDocument,
         deleteDocument,

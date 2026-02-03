@@ -30,7 +30,7 @@ import mimetypes
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlmodel import Session
 
@@ -41,7 +41,7 @@ from src.db.enums import DocumentTypeChoices
 from src.db.models import Documents, Users
 from src.errors import DocumentNotFound
 
-from .schemas import DocumentUpdate, UserDocumentsResponse
+from .schemas import DocumentListResponse, DocumentUpdate
 from .service import TradeChainService
 
 trade_chain_router = APIRouter()
@@ -93,58 +93,79 @@ def upload_single_multiple_document(
     )
 
 
-@trade_chain_router.get("/document", response_model=list[Documents])
+@trade_chain_router.get("/document", response_model=DocumentListResponse)
 def get_document_by_user(
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(
+        25, ge=1, le=100, description="Maximum number of records to return"
+    ),
     db: Session = Depends(get_session),
     user: Users = Depends(get_current_user),
     role_check: None = Depends(role_required(["bank", "corporate"])),
-) -> list[Documents]:
-    """Retrieve documents for the current user.
+) -> DocumentListResponse:
+    """Retrieve documents for the current user with pagination.
 
-    Returns all documents owned by the currently authenticated user.
+    Returns paginated documents owned by the currently authenticated user.
     Bank and Corporate users can only see their own documents.
 
     Args:
+        skip: Number of records to skip for pagination (default: 0).
+        limit: Maximum records to return (default: 25, max: 100).
         db: Database session (injected).
         user: Current authenticated user (injected).
         role_check: Role validation ensuring bank/corporate access (injected).
 
     Returns:
-        list[Documents]: List of documents owned by the current user.
+        DocumentListResponse: Paginated list of documents with total count.
 
     Raises:
         HTTPException (401): If user is not authenticated.
         HTTPException (403): If user is not a bank or corporate user.
-        HTTPException (404): If no documents found for the user.
     """
-    return TradeChainService.get_document_by_user(
+    documents, total = TradeChainService.get_document_by_user(
         user=user,
         db=db,
+        skip=skip,
+        limit=limit,
+    )
+    return DocumentListResponse(
+        total=total, documents=documents, skip=skip, limit=limit
     )
 
 
-@trade_chain_router.get("/documents", response_model=list[UserDocumentsResponse])
+@trade_chain_router.get("/documents", response_model=DocumentListResponse)
 def get_all_user_documents(
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(
+        25, ge=1, le=100, description="Maximum number of records to return"
+    ),
     db: Session = Depends(get_session),
     role_check: None = Depends(role_required(["admin", "auditor"])),
-) -> list[UserDocumentsResponse]:
-    """Retrieve all users with their documents (Admin view).
+) -> DocumentListResponse:
+    """Retrieve all documents with pagination (Admin view).
 
-    Returns all users in the system along with their associated documents.
+    Returns all documents in the system with pagination support.
     Intended for administrative dashboards and audit purposes.
 
     Args:
+        skip: Number of records to skip for pagination (default: 0).
+        limit: Maximum records to return (default: 25, max: 100).
         db: Database session (injected).
         role_check: Role validation ensuring admin/auditor access (injected).
 
     Returns:
-        list[UserDocumentsResponse]: List of users with their documents.
+        DocumentListResponse: Paginated list of documents with total count.
 
     Raises:
         HTTPException (401): If user is not authenticated.
         HTTPException (403): If user is not an admin or auditor.
     """
-    return TradeChainService.get_all_documents_by_all_user(db=db)
+    documents, total = TradeChainService.get_all_documents_by_all_user(
+        db=db, skip=skip, limit=limit
+    )
+    return DocumentListResponse(
+        total=total, documents=documents, skip=skip, limit=limit
+    )
 
 
 @trade_chain_router.put("/document/{document_id}", response_model=Documents)

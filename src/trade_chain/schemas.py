@@ -7,6 +7,7 @@ provide automatic API documentation.
 Classes:
     DocumentUpdate: Schema for updating document type.
     DocumentBase: Base schema for document responses.
+    DocumentListResponse: Paginated list response for documents.
     UserDocumentsResponse: Schema for user with documents response.
 """
 
@@ -76,6 +77,35 @@ class DocumentBase(BaseModel):
     owner_id: int = Field(..., description="ID of the document owner")
     issued_at: datetime = Field(..., description="Document issuance date")
     created_at: datetime = Field(..., description="Upload timestamp")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DocumentListResponse(BaseModel):
+    """Paginated list response for documents.
+
+    Used for API responses that return paginated document lists,
+    including total count and pagination metadata.
+
+    Attributes:
+        total: Total number of documents matching the query.
+        documents: List of documents for the current page.
+        skip: Number of records skipped (offset).
+        limit: Maximum number of records returned per page.
+
+    Example:
+        >>> response = DocumentListResponse(
+        ...     total=100,
+        ...     documents=[...],
+        ...     skip=0,
+        ...     limit=25
+        ... )
+    """
+
+    total: int = Field(..., description="Total number of documents")
+    documents: list[DocumentBase] = Field(..., description="List of documents")
+    skip: int = Field(..., description="Number of records skipped")
+    limit: int = Field(..., description="Maximum records returned")
 
     model_config = ConfigDict(from_attributes=True)
 

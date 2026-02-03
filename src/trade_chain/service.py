@@ -23,12 +23,11 @@ import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 from fastapi import UploadFile
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import selectinload
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from src.db.enums import DocumentTypeChoices, LedgerActionChoices
 from src.db.models import Documents, LedgerEntries, Users
@@ -41,7 +40,7 @@ from src.errors import (
     InvalidDocumentFormat,
 )
 
-from .schemas import DocumentBase, UserDocumentsResponse
+from .schemas import DocumentBase
 from .utils import generate_document_hash
 from .validators import DocumentValidator
 
@@ -214,67 +213,90 @@ class TradeChainService:
     @staticmethod
     def get_all_documents_by_all_user(
         db: Session,
-    ) -> List[UserDocumentsResponse]:
-        """Retrieve all users with their associated documents (admin view).
+        skip: int = 0,
+        limit: int = 25,
+    ) -> Tuple[List[DocumentBase], int]:
+        """Retrieve all documents with pagination (admin view).
 
-        Fetches all users from the database along with their documents
-        using eager loading to avoid N+1 query issues. Intended for
-        administrative dashboards.
+        Fetches all documents from the database with pagination support.
+        Intended for administrative dashboards.
 
         Args:
             db: SQLModel database session for database operations.
+            skip: Number of records to skip for pagination (default: 0).
+            limit: Maximum number of records to return (default: 25).
 
         Returns:
-            List[UserDocumentsResponse]: List of users with their documents,
-                each containing user id, name, email, and list of documents.
+            Tuple[List[DocumentBase], int]: A tuple containing:
+                - List of documents for the current page
+                - Total count of all documents
 
         Note:
             This endpoint should be restricted to admin users only.
-            Uses selectinload for efficient eager loading of documents.
+            Results are ordered by created_at descending (newest first).
         """
-        statement = select(Users).options(selectinload(Users.documents))  # type: ignore
+        # Get total count
+        base_query = select(Documents)
+        count_query = select(func.count()).select_from(base_query.subquery())
+        total = db.exec(count_query).one()
+
+        # Get paginated documents
+        statement = (
+            select(Documents)
+            .order_by(Documents.created_at.desc())  # type: ignore
+            .offset(skip)
+            .limit(limit)
+        )
         results = db.exec(statement).all()
-        return [
-            UserDocumentsResponse(
-                id=user.id,  # type: ignore
-                name=user.name,
-                email=user.email,
-                documents=[
-                    DocumentBase.model_validate(doc) for doc in user.documents or []
-                ],
-            )
-            for user in results
-        ]
+
+        documents = [DocumentBase.model_validate(doc) for doc in results]
+        return documents, total
 
     @staticmethod
     def get_document_by_user(
         user: Users,
         db: Session,
-    ) -> list[Documents]:
-        """Retrieve all documents owned by a specific user.
+        skip: int = 0,
+        limit: int = 25,
+    ) -> Tuple[list[DocumentBase], int]:
+        """Retrieve all documents owned by a specific user with pagination.
 
-        Fetches all documents from the database where the owner_id matches
-        the provided user's ID.
+        Fetches documents from the database where the owner_id matches
+        the provided user's ID, with pagination support.
 
         Args:
             user: The authenticated user whose documents are to be retrieved.
             db: SQLModel database session for database operations.
+            skip: Number of records to skip for pagination (default: 0).
+            limit: Maximum number of records to return (default: 25).
 
         Returns:
-            list[Documents]: List of all Documents owned by the user.
-
-        Raises:
-            HTTPException: 404 if no documents are found for the user.
+            Tuple[list[DocumentBase], int]: A tuple containing:
+                - List of documents for the current page
+                - Total count of user's documents
 
         Note:
+            Results are ordered by created_at descending (newest first).
             Returns all document types. Use additional filtering at the
             router level if specific document types are needed.
         """
-        statement = select(Documents).where(Documents.owner_id == user.id)  # type: ignore
-        document = db.exec(statement).all()
-        if not document:
-            raise DocumentNotFound()
-        return list(document)
+        # Get total count for this user
+        base_query = select(Documents).where(Documents.owner_id == user.id)  # type: ignore
+        count_query = select(func.count()).select_from(base_query.subquery())
+        total = db.exec(count_query).one()
+
+        # Get paginated documents
+        statement = (
+            select(Documents)
+            .where(Documents.owner_id == user.id)  # type: ignore
+            .order_by(Documents.created_at.desc())  # type: ignore
+            .offset(skip)
+            .limit(limit)
+        )
+        results = db.exec(statement).all()
+
+        documents = [DocumentBase.model_validate(doc) for doc in results]
+        return documents, total
 
     @staticmethod
     def get_document_by_id(
